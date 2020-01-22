@@ -1,0 +1,93 @@
+
+outdir: /DATA/usr/c.leemans/projects/tagmap_ruben/results_mathias
+input_dir: /shared/gcf/m.eder/5679/fastq_files
+
+input_file:
+    ctrl_fwd:
+        - 5679_1_neg_ctrl_Fw_CGTACTAG-TAGATCGC_S1_R1_001.fastq.gz
+        - 5679_1_neg_ctrl_Fw_CGTACTAG-TAGATCGC_S1_R2_001.fastq.gz
+    ctrl_rev:
+        - 5679_6_neg_ctrl_Rv_CGTACTAG-ACTGCATA_S6_R1_001.fastq.gz
+        - 5679_6_neg_ctrl_Rv_CGTACTAG-ACTGCATA_S6_R2_001.fastq.gz
+    day2_fwd:
+        - 5679_2_day2_Fw_CGTACTAG-CTCTCTAT_S2_R1_001.fastq.gz
+        - 5679_2_day2_Fw_CGTACTAG-CTCTCTAT_S2_R2_001.fastq.gz
+    day2_rev:
+        - 5679_7_day2_Rv_CGTACTAG-AAGGAGTA_S7_R1_001.fastq.gz
+        - 5679_7_day2_Rv_CGTACTAG-AAGGAGTA_S7_R2_001.fastq.gz
+    day4_fwd:
+        - 5679_3_day4_Fw_CGTACTAG-TATCCTCT_S3_R1_001.fastq.gz
+        - 5679_3_day4_Fw_CGTACTAG-TATCCTCT_S3_R2_001.fastq.gz
+    day4_rev:
+        - 5679_8_day4_Rv_CGTACTAG-CTAAGCCT_S8_R1_001.fastq.gz
+        - 5679_8_day4_Rv_CGTACTAG-CTAAGCCT_S8_R2_001.fastq.gz
+    day6_fwd:
+        - 5679_4_day6_Fw_CGTACTAG-AGAGTAGA_S4_R1_001.fastq.gz
+        - 5679_4_day6_Fw_CGTACTAG-AGAGTAGA_S4_R2_001.fastq.gz
+    day6_rev:
+        - 5679_9_day6_Rv_CGTACTAG-CGTCTAAT_S9_R1_001.fastq.gz
+        - 5679_9_day6_Rv_CGTACTAG-CGTCTAAT_S9_R2_001.fastq.gz
+    day8_fwd:
+        - 5679_5_day8_Fw_CGTACTAG-GTAAGGAG_S5_R1_001.fastq.gz
+        - 5679_5_day8_Fw_CGTACTAG-GTAAGGAG_S5_R2_001.fastq.gz
+    day8_rev:
+        - 5679_10_day8_Rv_CGTACTAG-TCTCTCCG_S10_R1_001.fastq.gz
+        - 5679_10_day8_Rv_CGTACTAG-TCTCTCCG_S10_R2_001.fastq.gz
+
+
+pairs:
+    - [ctrl_fwd, ctrl_rev]
+    - [day2_fwd, day2_rev]
+    - [day4_fwd, day4_rev]
+    - [day6_fwd, day6_rev]
+    - [day8_fwd, day8_rev]
+
+mingap: 100
+
+direction:
+    ctrl_fwd: FWD
+    ctrl_rev: REV
+    day2_fwd: FWD
+    day2_rev: REV
+    day4_fwd: FWD
+    day4_rev: REV
+    day6_fwd: FWD
+    day6_rev: REV
+    day8_fwd: FWD
+    day8_rev: REV
+
+mapper_options: "--very-sensitive"
+bowtie_index:
+    mm10: "/DATA/usr/c.leemans/data/mm10/index/bowtie2/mm10_1-19_XYM"
+
+## minimum mapping quality for a read
+min_mapq_read: 0
+## minimum for the maximum mapping quality of reads belonging to one putative insertion
+min_max_mapq: 2
+
+## minimum for the mean mapping quality of all reads belonging to one putative insertion
+min_avg_mapq: 0
+
+max_pair_dist: 15000000
+
+min_depth: 5
+
+
+
+structure:
+    FWD: |
+        ID      5'             3' type                       q     second-read pos   keep-bases
+        r2      AGTGAGTTTAAATGTATTTGGCTAAGGTGTATGTAAACTTCCGACTTCAACTGTA -  const  present  True  var  2
+        r1      CGTCGGCAGCGTCAGATGTGTATAAGAGACAG  -  const   -  False var -
+        r1_rev  -  CTGTCTCTTATACACATCTGACGCTGCCGACG  const   -        True var -
+    REV: |
+        ID      5'    3' type    req     second-read pos   keep-bases
+        r1      CGTCGGCAGCGTCAGATGTGTATAAGAGACAG  -  const   - False var -
+        r2      AAACGAGTTTTAATGACTCCAACTTAAGTGTATGTAAACTTCCGACTTCAACTGTA  -  const   present True  var 2
+        r1_rev  -  CTGTCTCTTATACACATCTGACGCTGCCGACG  const   -       True var -
+
+
+
+samtools: samtools
+mapper: bowtie2
+parser: ~t.v.schaik/mydata/modules/read-parsing/read_parser.py

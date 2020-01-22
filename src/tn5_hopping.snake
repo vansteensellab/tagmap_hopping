@@ -1,0 +1,177 @@
+import getpass
+import datetime
+import inspect
+import os
+import re
+from Bio.Seq import Seq
+
+filename = inspect.getframeinfo(inspect.currentframe()).filename
+path = os.path.dirname(os.path.abspath(filename))
+samtools = config['samtools']
+
+# user = getpass.getuser()
+# date = datetime.datetime.now()
+# date = '%i%0.2i%0.2i' % (date.year, date.month, date.day)
+# OUTDIR = ''.join((user[0], user[2], date, '_', config["dir_suffix"]))
+OUTDIR = config['outdir']
+
+
+
+def parse_meta(meta_file):
+    with open(meta_file) as f:
+        header = f.readline().strip().split('\t')
+        id_i = header.index('ID')
+        direction_i = header.index('direction')
+        mate_i = header.index('mate')
+        file_i = header.index('file')
+        if 'genome' in header:
+            genome_i = header.index('genome')
+        else:
+            genome_i = -1
+        for line in f.readlines():
+            line_split = line.strip().split('\t')
+            mate = line_split[mate_i]
+            R_i = ['R1', 'R2'].index(mate)
+            if genome_i == -1:
+                genome = list(config['bowtie_index'].keys())
+            else:
+                genome = [line_split[genome_i]]
+            yield(line_split[id_i], line_split[direction_i], R_i,
+                  line_split[file_i], genome)
+
+if 'META_INFO' in config:
+    pair_dict = {}
+    config['genome'] = {}
+    if 'input_file' not in config:
+        config['input_file'] = {}
+    if 'direction' not in config:
+        config['direction'] = {}
+    for id, direction, mate, file, genome in parse_meta(config['META_INFO']):
+        name = '_'.join((id, direction))
+        if name not in config['input_file']:
+            config['input_file'][name] = ['', '']
+        config['input_file'][name][mate] = file
+        if id not in config['genome']:
+            config['genome'][id] = genome
+        if id not in pair_dict:
+            pair_dict[id] = [name]
+        elif name not in pair_dict[id]:
+            pair_dict[id].append(name)
+        if name not in config['direction']:
+            config['direction'][name] = direction
+        if type == 'indelPCR':
+            config['guide'][guide].append(id)
+    if 'pairs' not in config:
+        config['pairs'] = list(pair_dict.values())
+    else:
+        config['pairs'].extend(list(pair_dict.values()))
+else:
+    config['genome'] = {}
+    for name in config['input_file']:
+        id = name.split('_')[0]
+        if id not in config['genome']:
+            config['genome'][id] = list(config['bowtie_index'].keys())
+
+
+
+
+def get_all(config):
+    for pair in config['pairs']:
+        id = pair[0].split('_')[0]
+        genome_list = config['genome'][id]
+        for genome in genome_list:
+            yield('%s/%s/combined/%s-%s.txt' % (config['outdir'], genome,
+                                                pair[0], pair[1]))
+
+
+rule all:
+    input:
+        get_all(config)
+
+
+rule combine:
+    input:
+       '{outdir}/bed/{name}.bed',
+       '{outdir}/bed/{name2}.bed',
+       '{outdir}/sorted/{name}.bam',
+       '{outdir}/sorted/{name2}.bam'
+    output:
+       '{outdir}/combined/{name}-{name2}.txt',
+       temp('{outdir}/temp_{name}-{name2}.txt')
+    params:
+       mingap=config['mingap']
+    shell:
+       '{path}/combine_bed.sh -a {input[0]} -b {input[1]} -c {input[2]} -d {input[3]} -g {params.mingap} -t {output[1]} > {output[0]}'
+
+
+
+rule bamtobed:
+    input:
+        '{outdir}/sorted/{name}.bam'
+    output:
+        '{outdir}/bed/{name}.bed'
+    shell:
+        "bedtools bamtobed -i {input} | bedtools merge -i - > {output}"
+
+## sort and index the bam file with read alignments from both alleles
+rule sort_and_index:
+    input:
+        '{outdir}/mapped/{name}.bam'
+    output:
+        '{outdir}/sorted/{name}.bam',
+        '{outdir}/sorted/{name}.bam.bai'
+    threads: 10
+    shell:
+        "sambamba markdup -r {input} /dev/stdout | "
+        "    {samtools} sort -@ {threads} > {output[0]}; "
+        "{samtools} index {output[0]}"
+
+
+
+rule map_reads:
+    input:
+        "{outdir}/{genome}/parsed/{name}.1.fastq.gz"
+    params:
+        mapper = config["mapper"],
+        index = lambda wildcards: config['bowtie_index'][wildcards.genome],
+        opt = config['mapper_options']
+    threads: 10
+    log: "{outdir}/{genome}/mapped/{name}.mapping.log"
+    output:
+        "{outdir}/{genome}/mapped/{name}.bam"
+    shell:
+        "({params.mapper} -p {threads} {params.opt} "
+        "-x {params.index} --reorder -U {input[0]}) "
+        "2> {log} | {samtools} view -Sb - > {output}"
+
+
+def get_raw_input(config, wildcards):
+    in_list = config['input_file'][wildcards.name]
+    return('/'.join((config['input_dir'], i)) for i in in_list)
+
+
+def get_structure(config, wildcards):
+    direction = config['direction'][wildcards.name]
+    structure = config['structure'][direction]
+    return(structure)
+
+rule parse_reads:
+    input:
+        lambda wildcards: get_raw_input(config, wildcards)
+    output:
+        '{outdir}/parsed/{name}.statistics.txt',
+        '{outdir}/parsed/{name}.1.fastq.gz',
+        '{outdir}/parsed/{name}.2.fastq.gz',
+        structure = '{outdir}/parsed/{name}.structure.txt'
+    log:
+        '{outdir}/parsed/{name}_parser.log'
+    params:
+        structure= lambda wildcards: get_structure(config, wildcards),
+        outdir = '{outdir}/parsed/',
+        name= '{name}',
+        parser= config['parser']
+    run:
+        with open(output.structure, 'w') as f:
+            f.write(params.structure)
+        shell('{params.parser} -r -M 16 -a -n 1000000 -l {log} -p {input[1]} '
+              '-b {wildcards.name} {input[0]} {output.structure} {params.outdir}')
