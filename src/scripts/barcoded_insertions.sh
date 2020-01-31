@@ -1,4 +1,4 @@
-
+#!/bin/bash
 
 # awk '{if ($2 > 5){print $0}}' RSTP2_5.txt | sort -k2 -k3 -k4n |
 awk '{if ($2 > 1){print $0}}' $1 | sort -k2 -k3 -k4n |

@@ -3,6 +3,7 @@ import datetime
 import inspect
 import os
 import re
+import pandas
 from Bio.Seq import Seq
 
 filename = inspect.getframeinfo(inspect.currentframe()).filename
@@ -15,93 +16,305 @@ samtools = config['samtools']
 # OUTDIR = ''.join((user[0], user[2], date, '_', config["dir_suffix"]))
 OUTDIR = config['outdir']
 
+# config={'input_info': 'config/ME21012020_for_Christ_sequencing_data.txt',
+#         'pairing_info': 'config/cl20200121_hopping_mix_pairing.tsv'}
+
+input_df = pandas.read_csv(config['input_info'], sep='\t')
+input_df.columns = [col.lower() for col in input_df.columns]
+pairing_df = pandas.read_csv(config['pairing_info'], sep='\t')
+pairing_df.columns = [col.lower() for col in pairing_df.columns]
 
 
-def parse_meta(meta_file):
-    with open(meta_file) as f:
-        header = f.readline().strip().split('\t')
-        id_i = header.index('ID')
-        direction_i = header.index('direction')
-        mate_i = header.index('mate')
-        file_i = header.index('file')
-        if 'genome' in header:
-            genome_i = header.index('genome')
+
+
+def get_all(config, input_df, pairing_df):
+    home_df = pairing_df[pairing_df['home_location']=="-"]
+    hop_df = pairing_df[pairing_df['home_location']!="-"]
+    for pairing_row in pairing_df.itertuples():
+        if pairing_row.reverse == '-':
+            file_name = ['home/bed/%s.bed' % pairing_row.forward]
+        elif pairing_row.forward == '-':
+            file_name = ['home/bed/%s.bed' % pairing_row.reverse]
         else:
-            genome_i = -1
-        for line in f.readlines():
-            line_split = line.strip().split('\t')
-            mate = line_split[mate_i]
-            R_i = ['R1', 'R2'].index(mate)
-            if genome_i == -1:
-                genome = list(config['bowtie_index'].keys())
+            is_forward = input_df['sample_name']==pairing_row.forward
+            is_reverse = input_df['sample_name']==pairing_row.reverse
+            if not is_forward.any():
+                raise ValueError('sample_name "%s" not found in input data' %
+                                 pairing_row.forward)
+            if not is_reverse.any() and pairing_row.reverse!='-':
+                raise ValueError('sample_name "%s" not found in input data' %
+                                 pairing_row.reverse)
+            input_fwd = input_df[is_forward]
+            genome_list = input_fwd.genome.tolist()
+            if pairing_row.home_location!="-":
+                input_rev = input_df[is_reverse]
+                genome_list = input_fwd.genome.tolist() + input_rev.genome.tolist()
+                file_list = ['hopping/insertions/%s.txt' % (pairing_row.id),
+                             'hopping/overlap/%s.txt' % (pairing_row.forward),
+                             'hopping/overlap/%s.txt' % (pairing_row.reverse)]
             else:
-                genome = [line_split[genome_i]]
-            yield(line_split[id_i], line_split[direction_i], R_i,
-                  line_split[file_i], genome)
-
-if 'META_INFO' in config:
-    pair_dict = {}
-    config['genome'] = {}
-    if 'input_file' not in config:
-        config['input_file'] = {}
-    if 'direction' not in config:
-        config['direction'] = {}
-    for id, direction, mate, file, genome in parse_meta(config['META_INFO']):
-        name = '_'.join((id, direction))
-        if name not in config['input_file']:
-            config['input_file'][name] = ['', '']
-        config['input_file'][name][mate] = file
-        if id not in config['genome']:
-            config['genome'][id] = genome
-        if id not in pair_dict:
-            pair_dict[id] = [name]
-        elif name not in pair_dict[id]:
-            pair_dict[id].append(name)
-        if name not in config['direction']:
-            config['direction'][name] = direction
-        if type == 'indelPCR':
-            config['guide'][guide].append(id)
-    if 'pairs' not in config:
-        config['pairs'] = list(pair_dict.values())
-    else:
-        config['pairs'].extend(list(pair_dict.values()))
-else:
-    config['genome'] = {}
-    for name in config['input_file']:
-        id = name.split('_')[0]
-        if id not in config['genome']:
-            config['genome'][id] = list(config['bowtie_index'].keys())
+                input_rev = input_df[is_reverse]
+                genome_list = input_fwd.genome.tolist() + input_rev.genome.tolist()
+                file_list = ['home/insertions/%s.txt' % (pairing_row.id)]
+        if all(genome == genome_list[0] for genome in genome_list):
+            for file_name in file_list:
+                yield('%s/%s/%s' % (config['outdir'], genome_list[0],
+                                    file_name))
+        else:
+            raise ValueError(('reference genome for pair %s with '
+                              '%s and %s is not the same for '
+                              'every file') % (pairing_row.id,
+                                               pairing_row.forward,
+                                               pairing_row.reverse))
 
 
 
-
-def get_all(config):
-    for pair in config['pairs']:
-        id = pair[0].split('_')[0]
-        genome_list = config['genome'][id]
-        for genome in genome_list:
-            yield('%s/%s/combined/%s-%s.txt' % (config['outdir'], genome,
-                                                pair[0], pair[1]))
 
 
 rule all:
     input:
-        get_all(config)
+        get_all(config, input_df, pairing_df)
 
+def get_from_config(config, input_df, pairing_df, wildcards, column, info):
+    name_list = [name for name in get_pairs(pairing_df, wildcards.pair)]
+    this_input = input_df[input_df['sample_name'].isin(name_list)]
+    info_list = this_input[column].tolist()
+    if all(x == info_list[0] for x in info_list):
+        return(config[info][info_list[0]])
+    else:
+        raise ValueError(('%s definition for pair %s with '
+                          '%s and %s is not the same for '
+                          'every file') % (column, home_row.ID, home_row.forward,
+                                           home_row.reverse))
+
+
+def get_home_region(config, pairing_df, wildcards):
+    this_pair = pairing_df.query(("forward == @wildcards.name | "
+                                  "reverse == @wildcards.name"))
+    pair_list = this_pair.ix[:,'home_location':'home_sequence'].values[0]
+    return('%s/home/regions/%s-%s.txt' % (wildcards.outdir,
+                                          pair_list[0], pair_list[1]))
+
+rule bed_region:
+    input:
+        bam='{outdir}/hopping/sorted/{name}.bam',
+        home=lambda wildcards: get_home_region(config, pairing_df, wildcards)
+    output:
+        bed=temp('{outdir}/hopping/overlap/{name}.bed'),
+        out='{outdir}/hopping/overlap/{name}.txt'
+    shell:
+        '{path}/scripts/find_overlap.sh -b {input.bam}'
+        '                               -r {input.home}'
+        '                               -t {output.bed}'
+        '                               -o {output.out}'
+
+def get_home_n(pairing_df, wildcards):
+    name_list = list(get_pairs(pairing_df, wildcards.pair))
+    if '-' in name_list:
+        return(1)
+    else:
+        return(2)
+
+rule lift_home:
+    input:
+        chain='{outdir}/insilico_genome/{pair}-{home}.chain',
+        insert='{outdir}/insertions/{pair}.txt',
+        bed=lambda wildcards: get_file_pair(pairing_df, wildcards,
+                                            '{outdir}/bed/{name}.bed'),
+    output:
+        insert=temp('{outdir}/regions/{pair}-{home}.insertions.bed'),
+        left=temp('{outdir}/regions/{pair}-{home}.left_over.bed'),
+        regions='{outdir}/regions/{pair}-{home}.txt'
+    params:
+        n=lambda wildcards: get_home_n(pairing_df, wildcards)
+    shell:
+        "{path}/scripts/lift_home.sh -c {input.chain}"
+        "                            -i {input.insert}"
+        "                            -b '{input.bed}'"
+        "                            -j {output.insert}"
+        "                            -l {output.left}"
+        "                            -r {output.regions}"
+        "                            -n {params.n}"
+
+
+rule build_index:
+    input:
+        '{outdir}/insilico_genome/{pair}.fa'
+    output:
+        '{outdir}/insilico_index/{pair}.1.bt2'
+    params:
+        '{outdir}/insilico_index/{pair}'
+    wildcard_constraints:
+        name='[^/]+'
+    threads: 10
+    shell:
+        'bowtie2-build --threads {threads} {input} {params}'
+
+rule intergrate:
+    input:
+        sites='{outdir}/insertions/{pair}.txt',
+        ref=lambda wildcards: get_from_config(config, input_df, pairing_df,
+                                              wildcards, 'genome',
+                                              'ref_fasta'),
+        ins=lambda wildcards: config['home_sequence'][wildcards.home]
+    output:
+        fa='{outdir}/insilico_genome/{pair}-{home}.fa',
+        chain='{outdir}/insilico_genome/{pair}-{home}.chain',
+        gff='{outdir}/insilico_genome/{pair}-{home}.gff3'
+    params:
+        overhang=lambda wildcards: get_from_config(config, input_df, pairing_df,
+                                                   wildcards, 'construct_type',
+                                                   'insertion_site')
+    shell:
+        '{path}/scripts/insilico_integrate.py --sites {input.sites}'
+        '                                     --names start_gap end_gap'
+        '                                     --ref {input.ref}'
+        '                                     --insert {input.ins}'
+        '                                     --overhang {params.overhang}'
+        '                                     --ori rev'
+        '                                     --chain-out {output.chain}'
+        '                                     --genome-out {output.fa}'
+        '                                     --gff-out {output.gff}'
+
+
+def get_ref_genome(config, input_df, pairing_df, wildcards):
+    if wildcards.construct == 'home':
+        ref = get_from_config(config, input_df, pairing_df,
+                               wildcards, 'genome', 'ref_fasta')
+    else:
+        this_pair = pairing_df[pairing_df['id']==wildcards.pair]
+        pair_list = this_pair.ix[:,'home_location':'home_sequence'].values[0]
+        ref = '%s/home/insilico_genome/%s-%s.fa' % (wildcards.outdir,
+                                                    pair_list[0], pair_list[1])
+    return(ref)
+
+def get_bw_pair(pairing_df, wildcards, pattern):
+    name_list = list(get_pairs(pairing_df, wildcards.pair))
+    if not '-' in name_list:
+        full_pat = '.'.join((pattern, '{i}.bw'))
+        for i in range(0,1):
+            yield(full_pat.format(name=name_list[i], **wildcards, i=i+1))
+    else:
+        full_pat = '.'.join((pattern, 'bw'))
+        yield(full_pat.format(name=name_list[0], **wildcards))
+
+rule score_intergrations:
+    input:
+        bw=lambda wildcards: get_bw_pair(pairing_df, wildcards,
+                                         '{outdir}/{construct}/coverage/{pair}'),
+        bam=lambda wildcards: get_file_pair(pairing_df, wildcards,
+                                           '{outdir}/{construct}/sorted/{name}.bam'),
+        bed='{outdir}/{construct}/combined/{pair}.txt',
+        fa=lambda wildcards: get_ref_genome(config, input_df, pairing_df,
+                                            wildcards)
+    output:
+        '{outdir}/{construct}/insertions/{pair}.txt'
+    params:
+        overhang=lambda wildcards: get_from_config(config, input_df, pairing_df,
+                                                   wildcards, 'construct_type',
+                                                   'insertion_site')
+    shell:
+        '{path}/scripts/mepp_tags.R --bw {input.bw}'
+        '                           --bam {input.bam}'
+        '                           --bed {input.bed}'
+        '                           --fasta {input.fa}'
+        '                           --out {output}'
+        '                           --overhang {params.overhang}'
+        '                           --mate 2' ## TODO: make this an actual option
+
+
+
+
+def get_chrom_sizes(config, input_df, pairing_df, wildcards):
+    pair_list = get_pairs(pairing_df, wildcards.pair)
+    this_input = input_df[input_df['sample_name'].isin(pair_list)]
+    genome = this_input.genome.tolist()[0]
+    return(config['chrom_sizes'][genome])
+
+rule single_coverage:
+    input:
+        bed='{outdir}/combined/{pair}.txt',
+        bam=lambda wildcards: get_file_pair(pairing_df, wildcards,
+                                           '{outdir}/sorted/{name}.bam'),
+        cs=lambda wildcards: get_chrom_sizes(config, input_df, pairing_df,
+                                             wildcards)
+    output:
+        '{outdir}/coverage/{pair}.bw',
+    wildcard_constraints:
+        pair='[^.]+'
+    shell:
+        '{path}/scripts/coverage_to_bw.sh -a {input.bed}'
+        '                                 -b {input.bam}'
+        '                                 -c {input.cs}'
+        '                                 -m 2'
+        '                                 -o {output}'
+
+rule coverage:
+    input:
+        bed='{outdir}/combined/{pair}.txt',
+        bam=lambda wildcards: get_file_pair(pairing_df, wildcards,
+                                           '{outdir}/sorted/{name}.bam'),
+        cs=lambda wildcards: get_chrom_sizes(config, input_df, pairing_df,
+                                             wildcards)
+    output:
+        out1='{outdir}/coverage/{pair}.1.bw',
+        out2='{outdir}/coverage/{pair}.2.bw'
+    shell:
+        '{path}/scripts/coverage_to_bw.sh -a {input.bed}'
+        '                                 -b {input.bam[0]}'
+        '                                 -c {input.cs}'
+        '                                 -m 2'
+        '                                 -o {output.out1}; '
+        '{path}/scripts/coverage_to_bw.sh -a {input.bed}'
+        '                                 -b {input.bam[1]}'
+        '                                 -c {input.cs}'
+        '                                 -m 2'
+        '                                 -o {output.out2}'
+
+
+
+def get_pairs(pairing_df, pair):
+    this_pair = pairing_df[pairing_df['id']==pair]
+    pair_list = this_pair.ix[:,'forward':'reverse'].values[0]
+    for pair in pair_list:
+        yield(pair)
+
+def get_file_pair(pairing_df, wildcards, pattern):
+    for name in get_pairs(pairing_df, wildcards.pair):
+        if name!= '-':
+            yield(pattern.format(name=name, **wildcards))
+
+def get_setting(pairing_df, wildcards, config):
+    if '-' in list(get_pairs(pairing_df, wildcards.pair)):
+        return(config['single'])
+    else:
+        return(config['paired'])
 
 rule combine:
     input:
-       '{outdir}/bed/{name}.bed',
-       '{outdir}/bed/{name2}.bed',
-       '{outdir}/sorted/{name}.bam',
-       '{outdir}/sorted/{name2}.bam'
+       bed=lambda wildcards: get_file_pair(pairing_df, wildcards,
+                                           '{outdir}/bed/{name}.bed'),
+       bam=lambda wildcards: get_file_pair(pairing_df, wildcards,
+                                           '{outdir}/sorted/{name}.bam')
     output:
-       '{outdir}/combined/{name}-{name2}.txt',
-       temp('{outdir}/temp_{name}-{name2}.txt')
+       '{outdir}/combined/{pair}.txt',
+       '{outdir}/combined/{pair}.cut',
+       temp('{outdir}/temp_{pair}.txt')
     params:
-       mingap=config['mingap']
+       min_gap=config['mingap'],
+       min_depth=lambda wildcards: get_setting(pairing_df, wildcards,
+                                               config['min_depth']),
+       min_max_mapq=lambda wildcards: get_setting(pairing_df, wildcards,
+                                                  config['min_max_mapq'])
     shell:
-       '{path}/combine_bed.sh -a {input[0]} -b {input[1]} -c {input[2]} -d {input[3]} -g {params.mingap} -t {output[1]} > {output[0]}'
+       '{path}/scripts/combine_bed.sh -a "{input.bed}"'
+       '                              -b "{input.bam}"'
+       '                              -g {params.min_gap}'
+       '                              -d {params.min_depth}'
+       '                              -m {params.min_max_mapq}'
+       '                              -c {output[1]}'
+       '                              -t {output[2]}'
+       '                              -o {output[0]}'
 
 
 
@@ -113,7 +326,7 @@ rule bamtobed:
     shell:
         "bedtools bamtobed -i {input} | bedtools merge -i - > {output}"
 
-## sort and index the bam file with read alignments from both alleles
+## filter duplicates, sort and index the bam file with read alignments from both alleles
 rule sort_and_index:
     input:
         '{outdir}/mapped/{name}.bam'
@@ -122,42 +335,71 @@ rule sort_and_index:
         '{outdir}/sorted/{name}.bam.bai'
     threads: 10
     shell:
-        "sambamba markdup -r {input} /dev/stdout | "
+        "sambamba markdup -r {input} /dev/stdout |"
+        "    sambamba view -f bam -F 'proper_pair' /dev/stdin |"
         "    {samtools} sort -@ {threads} > {output[0]}; "
         "{samtools} index {output[0]}"
 
 
 
+def get_bowtie_index(config, pairing_df, wildcards):
+    if wildcards.construct == "home":
+        index = config['bowtie_index'][wildcards.genome]
+    elif wildcards.construct == "hopping":
+        this_pair = pairing_df.query(("forward == @wildcards.name | "
+                                      "reverse == @wildcards.name"))
+        pair_list = this_pair.ix[:,'home_location':'home_sequence'].values[0]
+        index = '%s/%s/home/insilico_index/%s-%s' % (wildcards.outdir, wildcards.genome,
+                                                     pair_list[0], pair_list[1])
+    return(index)
+
+
 rule map_reads:
     input:
-        "{outdir}/{genome}/parsed/{name}.1.fastq.gz"
+        fwd="{outdir}/{genome}/parsed/{name}.1.fastq.gz",
+        rev="{outdir}/{genome}/parsed/{name}.2.fastq.gz",
+        index=lambda wildcards: '.'.join((get_bowtie_index(config,
+                                                           pairing_df,
+                                                           wildcards),
+                                          '1.bt2'))
     params:
         mapper = config["mapper"],
-        index = lambda wildcards: config['bowtie_index'][wildcards.genome],
+        index = lambda wildcards: get_bowtie_index(config, pairing_df,
+                                                   wildcards),
         opt = config['mapper_options']
     threads: 10
-    log: "{outdir}/{genome}/mapped/{name}.mapping.log"
+    log: "{outdir}/{genome}/{construct}/mapped/{name}.mapping.log"
     output:
-        "{outdir}/{genome}/mapped/{name}.bam"
+        "{outdir}/{genome}/{construct}/mapped/{name}.bam"
     shell:
-        "({params.mapper} -p {threads} {params.opt} "
-        "-x {params.index} --reorder -U {input[0]}) "
+        "({params.mapper} -X 2000 -I 0 -p {threads} {params.opt} "
+        "-x {params.index} --reorder -1 {input.fwd} -2 {input.rev}) "
         "2> {log} | {samtools} view -Sb - > {output}"
 
 
-def get_raw_input(config, wildcards):
-    in_list = config['input_file'][wildcards.name]
-    return('/'.join((config['input_dir'], i)) for i in in_list)
+def get_raw_input(config, input_df, wildcards):
+    this_input = input_df[input_df['sample_name']==wildcards.name]
+    mate1 = this_input[this_input['mate']=='R1']['file'].values[0]
+    mate2 = this_input[this_input['mate']=='R2']['file'].values[0]
+    for i in (mate1, mate2):
+        yield('/'.join((config['input_dir'], i)))
 
 
-def get_structure(config, wildcards):
-    direction = config['direction'][wildcards.name]
-    structure = config['structure'][direction]
-    return(structure)
+def get_structure(config, input_df, wildcards):
+    this_input = input_df[input_df['sample_name']==wildcards.name]
+    structure_list = this_input.structure.tolist()
+    if all(structure == structure_list[0] for structure in structure_list):
+        structure = config['structure'][structure_list[0]]
+        return(structure)
+    else:
+        raise ValueError(('read pairs for sample "%s" do not have same'
+                          'structure key') % wildcards.name)
+
+
 
 rule parse_reads:
     input:
-        lambda wildcards: get_raw_input(config, wildcards)
+        lambda wildcards: get_raw_input(config, input_df, wildcards)
     output:
         '{outdir}/parsed/{name}.statistics.txt',
         '{outdir}/parsed/{name}.1.fastq.gz',
@@ -166,7 +408,7 @@ rule parse_reads:
     log:
         '{outdir}/parsed/{name}_parser.log'
     params:
-        structure= lambda wildcards: get_structure(config, wildcards),
+        structure= lambda wildcards: get_structure(config, input_df, wildcards),
         outdir = '{outdir}/parsed/',
         name= '{name}',
         parser= config['parser']
