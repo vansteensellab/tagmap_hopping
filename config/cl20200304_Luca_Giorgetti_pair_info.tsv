@@ -1,0 +1,11 @@
+ID	Forward	Reverse	home_location	home_sequence	hybrid
+ctrl_pool_BR1	ctrl_pool_BR1_Fw	ctrl_pool_BR1_Rv	Giorgetti_arms	Giorgetti_split_GFP	-
+clone_C2_BR1	clone_C2_BR1_Fw	clone_C2_BR1_Rv	Giorgetti_arms	Giorgetti_split_GFP	-
+P5_BR1	P5_BR1_Fw	P5_BR1_Rv	Giorgetti_arms	Giorgetti_split_GFP	-
+P6_BR1	P6_BR1_Fw	P6_BR1_Rv	Giorgetti_arms	Giorgetti_split_GFP	-
+P4_BR1	P4_BR1_Fw	P4_BR1_Rv	Giorgetti_arms	Giorgetti_split_GFP	-
+ctrl_pool_BR2	ctrl_pool_BR2_Fw	ctrl_pool_BR2_Rv	Giorgetti_arms	Giorgetti_split_GFP	-
+clone_C2_BR2	clone_C2_BR2_Fw	clone_C2_BR2_Rv	Giorgetti_arms	Giorgetti_split_GFP	-
+P5_BR2	P5_BR2_Fw	P5_BR2_Rv	Giorgetti_arms	Giorgetti_split_GFP	-
+P6_BR2	P6_BR2_Fw	P6_BR2_Rv	Giorgetti_arms	Giorgetti_split_GFP	-
+P4_BR2	P4_BR2_Fw	P4_BR2_Rv	Giorgetti_arms	Giorgetti_split_GFP	-

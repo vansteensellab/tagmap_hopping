@@ -1,19 +1,19 @@
-ID	Forward	Reverse	home_location	home_sequence
-m5ug	mESCs_5ug_Fw_SB	mESCs_5ug_Rv_SB	m5ug_PB	pJOYC037
-m5ug_PB	mESCs_5ug_Fw_PB	mESCs_5ug_Rv_PB	-	-
-m1ug	mESCs_1ug_Fw_SB	mESCs_1ug_Rv_SB	m1ug_PB	pJOYC037
-m1ug_PB	mESCs_1ug_Fw_PB	mESCs_1ug_Rv_PB	-	-
-mCtrl	mESCs_ctrl_Fw_SB	mESCs_ctrl_Rv_SB	mCtrl_PB	pJOYC037
-mCtrl_PB	mESCs_ctrl_Fw_PB	mESCs_ctrl_Rv_PB	-	-
-hCtrl	Hap1_G2E9_WT_Fw_SB	Hap1_G2E9_WT_Rv_SB	hCtrl_home	ME_loxP_eGFP
-hCtrl_home	-	Hap1_G2E9_WT_Rv_home	-	-
-h5ug	Hap1_G2E9_5ug_Fw_SB	Hap1_G2E9_5ug_Rv_SB	hCtrl_home	ME_loxP_eGFP
-wt10	mESCs_wt10_Fw_PB	mESCs_wt10_Rv_PB	-	-
-wt75	mESCs_wt75_Fw_PB	mESCs_wt75_Rv_PB	-	-
-wt77	mESCs_wt77_Fw_PB	mESCs_wt77_Rv_PB	-	-
-wt78	mESCs_wt78_Fw_PB	mESCs_wt78_Rv_PB	-	-
-wt79	mESCs_wt79_Fw_PB	mESCs_wt79_Rv_PB	-	-
-wt80	mESCs_wt80_Fw_PB	mESCs_wt80_Rv_PB	-	-
-wt81	mESCs_wt81_Fw_PB	mESCs_wt81_Rv_PB	-	-
-wt82	mESCs_wt82_Fw_PB	mESCs_wt82_Rv_PB	-	-
-wt83	mESCs_wt83_Fw_PB	mESCs_wt83_Rv_PB	-	-
+ID	Forward	Reverse	home_location	home_sequence	hybrid
+m5ug	mESCs_5ug_Fw_SB	mESCs_5ug_Rv_SB	m5ug_PB	pJOYC037	-
+m5ug_PB	mESCs_5ug_Fw_PB	mESCs_5ug_Rv_PB	-	-	-
+m1ug	mESCs_1ug_Fw_SB	mESCs_1ug_Rv_SB	m1ug_PB	pJOYC037	-
+m1ug_PB	mESCs_1ug_Fw_PB	mESCs_1ug_Rv_PB	-	-	-
+mCtrl	mESCs_ctrl_Fw_SB	mESCs_ctrl_Rv_SB	mCtrl_PB	pJOYC037	-
+mCtrl_PB	mESCs_ctrl_Fw_PB	mESCs_ctrl_Rv_PB	-	-	-
+hCtrl	Hap1_G2E9_WT_Fw_SB	Hap1_G2E9_WT_Rv_SB	hCtrl_home	ME_loxP_eGFP	-
+hCtrl_home	-	Hap1_G2E9_WT_Rv_home	-	-	-
+h5ug	Hap1_G2E9_5ug_Fw_SB	Hap1_G2E9_5ug_Rv_SB	hCtrl_home	ME_loxP_eGFP	-
+wt10	mESCs_wt10_Fw_PB	mESCs_wt10_Rv_PB	-	-	CAST-129S
+wt75	mESCs_wt75_Fw_PB	mESCs_wt75_Rv_PB	-	-	CAST-129S
+wt77	mESCs_wt77_Fw_PB	mESCs_wt77_Rv_PB	-	-	CAST-129S
+wt78	mESCs_wt78_Fw_PB	mESCs_wt78_Rv_PB	-	-	CAST-129S
+wt79	mESCs_wt79_Fw_PB	mESCs_wt79_Rv_PB	-	-	CAST-129S
+wt80	mESCs_wt80_Fw_PB	mESCs_wt80_Rv_PB	-	-	CAST-129S
+wt81	mESCs_wt81_Fw_PB	mESCs_wt81_Rv_PB	-	-	CAST-129S
+wt82	mESCs_wt82_Fw_PB	mESCs_wt82_Rv_PB	-	-	CAST-129S
+wt83	mESCs_wt83_Fw_PB	mESCs_wt83_Rv_PB	-	-	CAST-129S

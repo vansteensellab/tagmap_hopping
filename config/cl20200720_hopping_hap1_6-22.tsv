@@ -1,0 +1,5 @@
+ID	Forward	Reverse	home_location	home_sequence	hybrid
+hCtrl_home	-	Hap1_G2E9_WT_Rv_home	-	-	-
+Hap1_6	Hap1_6_Fw	Hap1_6_Rv	hCtrl_home	ME_loxP_eGFP	Hap1
+Hap1_22	Hap1_22_Fw	Hap1_22_Rv	hCtrl_home	ME_loxP_eGFP	Hap1
+Hap1_6_h08bulk	Hap1_6_h08bulk_Fw	Hap1_6_h08bulk_Rv	hCtrl_home	ME_loxP_eGFP	Hap1

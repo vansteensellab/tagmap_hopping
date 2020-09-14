@@ -62,8 +62,12 @@ fi
 bedtools coverage -d -a <(awk -vOFS='\t' '{print $1, $2, $3}' $bed) \
                   -b $tmp.bam | \
     awk -vOFS='\t' '{print $1, $2+$4-1, $2+$4, $5}' | \
-    sort -k1,1 -k2,2n | uniq > $tmp
+    LC_COLLATE=C sort -k1,1 -k2,2n | uniq > $tmp
 
+if [ ! -s $tmp ]
+then
+    printf "chr1\t0\t1\t0\n" > $tmp
+fi
 
 bedGraphToBigWig $tmp $cs $out
 

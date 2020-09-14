@@ -1,0 +1,13 @@
+Sample_name	structure	mate	file	construct_type	Celltype	genome
+mESCs_wt10.44_Fw_SB	For_SB	R1	5872/fastq_files/5872_23_wt_10_44_SB_fwd_GCTCATGA-TATCCTCT_S23_R1_001.fastq.gz	SB	mESCs	mm10
+mESCs_wt10.44_Fw_SB	For_SB	R2	5872/fastq_files/5872_23_wt_10_44_SB_fwd_GCTCATGA-TATCCTCT_S23_R2_001.fastq.gz	SB	mESCs	mm10
+mESCs_wt10.44_Rv_SB	Rev_SB	R1	5872/fastq_files/5872_24_wt_10_44_SB_rev_GCTCATGA-AGAGTAGA_S24_R1_001.fastq.gz	SB	mESCs	mm10
+mESCs_wt10.44_Rv_SB	Rev_SB	R2	5872/fastq_files/5872_24_wt_10_44_SB_rev_GCTCATGA-AGAGTAGA_S24_R2_001.fastq.gz	SB	mESCs	mm10
+mESCs_wt10.44_Fw_PB	For_PB	R1	5872/fastq_files/5872_21_wt_10_44_PB_fwd_GCTCATGA-TAGATCGC_S21_R1_001.fastq.gz	PB	mESCs	mm10
+mESCs_wt10.44_Fw_PB	For_PB	R2	5872/fastq_files/5872_21_wt_10_44_PB_fwd_GCTCATGA-TAGATCGC_S21_R2_001.fastq.gz	PB	mESCs	mm10
+mESCs_wt10.44_Rv_PB	Rev_PB	R1	5872/fastq_files/5872_22_wt_10_44_PB_rev_GCTCATGA-CTCTCTAT_S22_R1_001.fastq.gz	PB	mESCs	mm10
+mESCs_wt10.44_Rv_PB	Rev_PB	R2	5872/fastq_files/5872_22_wt_10_44_PB_rev_GCTCATGA-CTCTCTAT_S22_R2_001.fastq.gz	PB	mESCs	mm10
+mESCs_wt10_Fw_PB	For_PB	R1	5823/fastq_files/5823_17_wt_10_fwd_CTCTCTAC-TAGATCGC_S23_R1_001.fastq.gz	PB	mESCs	mm10
+mESCs_wt10_Fw_PB	For_PB	R2	5823/fastq_files/5823_17_wt_10_fwd_CTCTCTAC-TAGATCGC_S23_R2_001.fastq.gz	PB	mESCs	mm10
+mESCs_wt10_Rv_PB	Rev_PB	R1	5823/fastq_files/5823_26_wt_10_rev_CAGAGAGG-TAGATCGC_S27_R1_001.fastq.gz	PB	mESCs	mm10
+mESCs_wt10_Rv_PB	Rev_PB	R2	5823/fastq_files/5823_26_wt_10_rev_CAGAGAGG-TAGATCGC_S27_R2_001.fastq.gz	PB	mESCs	mm10

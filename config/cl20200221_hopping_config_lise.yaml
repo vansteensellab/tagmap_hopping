@@ -1,6 +1,6 @@
 
-outdir: /DATA/usr/c.leemans/projects/tagmap_hopping/results/cl20200122_hopping_mathias
-input_dir: '/DATA/usr/m.eder/Tn5_tagmentation/E919_SB_PB_primer_test'
+outdir: /DATA/usr/c.leemans/projects/tagmap_hopping/results/cl20200221_hopping_lise
+input_dir: '/shared/gcf/l.dauban/5841/fastq_files'
 
 ## file_info contains information on the input files.
 ## it is a tab seperated file which requires the following columns in any order
@@ -10,13 +10,13 @@ input_dir: '/DATA/usr/m.eder/Tn5_tagmentation/E919_SB_PB_primer_test'
 # mate - which mate of the paired-end sequence is used (R1 or R2)
 # file - filename, if no input_dir is given a full path is required.
 # construct_type - type of construct used, necessary to find back expected part on both side of insertion.
-input_info: /DATA/usr/c.leemans/projects/tagmap_hopping/config/ME21012020_for_Christ_sequencing_data.txt
+input_info: /DATA/usr/c.leemans/projects/tagmap_hopping/config/cl20200221_Lise_Clones_2.tsv
 
 
 ## pairing_info contains information on which Sample_names of the input belong to the same construct.
 ## For samples from tagmentation on the hopping transposon there is also information on
 ## the samples or location info belonging to the sites of original intergration
-pairing_info: '/DATA/usr/c.leemans/projects/tagmap_hopping/config/cl20200121_hopping_mix_pairing.tsv'
+pairing_info: '/DATA/usr/c.leemans/projects/tagmap_hopping/config/cl20200221_Lise_Clones_1.tsv'
 
 mingap: 100
 
@@ -65,6 +65,7 @@ min_depth:
     paired: 0
     single: 3
 
+
 structure:
     For_SB: |
         ID      5'             3' type                       req     second-read pos   keep-bases
@@ -80,7 +81,8 @@ structure:
         r1_rev  -  CTGTCTCTTATACACATCTGACGCTGCCGACG  const   -       True var -
     For_PB: |
         ID      5'             3' type                       req     second-read pos   keep-bases
-        r2      GTACGTCACAATATGATTATCTTTCTAGGGTTAA -  const  present  True  -  4
+        r2_a      GTACGTCACAATATGATTATC -  const  present  True  -  -
+        r2_b      TTTCTAGGGTTAA -  const  present  True  -  4
         r1      CGTCGGCAGCGTCAGATGTGTATAAGAGACAG  -  const   -  False var -
         r1_rev  -  CTGTCTCTTATACACATCTGACGCTGCCGACG  const   -        True var -
         r2_rev  -  TTAACCCTAGAAAGATAATCATAT  const           -        False var 4
@@ -88,7 +90,8 @@ structure:
         ID      5'    3' type    req     second-read pos   keep-bases
         r1      CGTCGGCAGCGTCAGATGTGTATAAGAGACAG  -  const   - False var -
         r2_rev  -  TTAACCCTAGAAAGATAGTCTGCGTAAAATTG  const   -       False var 4
-        r2      CAATTTTACGCAGACTATCTTTCTAGGGTTAA  -  const   present True  - 4
+        r2_a      CAATTTTACGCAGACTATC  -  const   present True  - -
+        r2_b      TTTCTAGGGTTAA  -  const   present True  - 4
         r1_rev  -  CTGTCTCTTATACACATCTGACGCTGCCGACG  const   -       True var -
     Rev_SB_home: |
         ID      5'    3' type    req     second-read pos   keep-bases

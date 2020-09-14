@@ -1,0 +1,1178 @@
+
+
+body:
+    pattern_1: |
+        ---
+        title: "Tagmentation mapping of {ID} hopping"
+        author: "Christ Leemans"
+        date: "`r format(Sys.time(), '%Y-%m-%d')`"
+        output:
+            html_document:
+                theme: journal #cerulean
+                highlight: monochrome
+                toc: true
+                toc_float: true
+                code_folding: show
+            pdf_document:
+                fig_width: 8
+                fig_height: 5
+        editor_options:
+            chunk_output_type: console
+        ---
+        # knitr document van Steensel lab
+
+        ## Automatically generated report from tagMap hopping pipeline
+        ## generated on {date}
+
+        ## Introduction
+        This document reports on some of the basic pipeline statistics for tagmap
+        with ID {ID}.
+        {ID} combines evidence from {forward} and {reverse} on each side of the
+        transposon which hopped from a {home_type}. These will be refered to as
+        Forward and Reverse reaction respectively. For each of these reactions we
+        have paired-end reads. To avoid confusion, these will be refered to as
+        mate 1 and mate 2 respectively.
+
+        Evidence for the location(s) of the "home" element (construct from which the
+        transposon hoppend) was gathered from the following information:
+        {home_intro}
+
+        ## Preperation
+
+        First we need to load library's, define functions and import data.
+
+        ### library's and functions
+
+    code_1: |
+        ```{r include=FALSE}
+        knitr::opts_chunk$set(comment = NA)
+        ```
+
+        ```{r}
+        library(stringr)
+        library(data.table)
+        library(ggplot2)
+        library(kableExtra)
+        library(gridExtra)
+        library(ggrepel)
+
+        get_structure_line <- function(line_vec){
+            pattern = paste0("\t\t%s:\n",
+                             "\t\t\t\"%s\" was removed from the %i' end of the read\n")
+
+            if (line_vec['req']=='present'){
+                pattern = paste0(pattern,
+                                 "\t\t\t- this sequence was required\n")
+            }
+            keep = suppressWarnings(as.numeric(line_vec['keep.bases']))
+            if (!is.na(keep) & keep > 0){
+                keep_str = sprintf("\t\t\t- the %s %i bases were kept\n",
+                                   ifelse(line_vec['X5.']!='-', 'last', 'first'),
+                                   keep)
+                pattern = paste0(pattern, keep_str)
+            }
+            if (line_vec['pos']=='var'){
+                pattern = paste0(pattern,
+                                 "\t\t\t- the position of pattern in the ",
+                                 "sequence is variable\n")
+            }
+
+            if (line_vec['X5.']!='-'){
+                sprintf(pattern, line_vec['ID'], line_vec['X5.'], 5)
+            } else {
+                sprintf(pattern, line_vec['ID'], line_vec['X3.'], 3)
+            }
+        }
+
+        get_plot_xy <- function(plot){
+            panel_params = ggplot_build(plot)$layout$panel_params[[1]]
+            x = panel_params$x.range
+            y = panel_params$y.range
+            return(list(x=x,y=y))
+        }
+
+        plot_ideogram <- function(chrom_size, insert_home_sel, insert_hopped_sel,
+                                  line_nudge, color_vec, title){
+
+            chrom_num_i = grep('chr[0-9]+', chrom_size$seqnames)
+            chrom_XYM_i = grep('chr[XYM]', chrom_size$seqnames)
+            other = chrom_size$seqnames[-c(chrom_num_i, chrom_XYM_i)]
+
+            chrom_num = chrom_size$seqnames[chrom_num_i]
+            chrom_XYM = c('chrX', 'chrY', 'chrM')
+            chrom_XYM = chrom_size[, chrom_XYM[chrom_XYM %in% seqnames]]
+            chrom_levels = c(chrom_num[order(as.numeric(gsub('chr','',chrom_num)))],
+                           chrom_XYM, other)
+            chrom_size[, chromosome:=factor(seqnames, levels=chrom_levels)]
+
+
+            insert_hopped_sel[, center := round((as.numeric(start) + as.numeric(end)) / 2)]
+            insert_home_sel[, center := round((as.numeric(start) + as.numeric(end)) / 2)]
+
+            insert_hopped_sel[,chromosome:= factor(chromosome, levels=chrom_levels)]
+            insert_home_sel[,chromosome:= factor(chromosome, levels=chrom_levels)]
+            line_x <- function(chromosome, region, nudge=0.3){
+                mid = as.numeric(chromosome)
+                this_nudge = ifelse(region=='hopped', nudge, -nudge)
+                return(c(mid, mid + this_nudge))
+            }
+            by_vec = c('name', 'chromosome', 'center',
+                       'region')
+
+            insert_line_home = insert_home_sel[,list(x = line_x(chromosome, 'home',
+                                                                line_nudge)),
+                                               by=by_vec]
+            insert_line_hopped = insert_hopped_sel[,list(x = line_x(chromosome, 'hopped',
+                                                                    line_nudge)),
+                                                   by=by_vec]
+            chrom_size_melt = suppressWarnings(melt(chrom_size,
+                                                    id.vars=c('seqnames','chromosome')))
+            mb_breaks = seq(0,200,50)
+            ggplot(chrom_size_melt, aes(x=as.numeric(chromosome), y=value, group=chromosome)) +
+                ggtitle(title) +
+                geom_path(size=5, lineend='round', color='gray75') +
+                geom_line(data=insert_line_home,
+                          aes(x=x, y=center, color=region, group=name)) +
+                geom_line(data=insert_line_hopped,
+                          aes(x=x, y=center, color=region, group=name)) +
+                geom_text_repel(data=insert_hopped_sel,
+                                aes(x=as.numeric(chromosome) + line_nudge, y=center),
+                                label=".", direction='y', nudge_x=0.3, color='white',
+                                min.segment.length=0, segment.colour=color_vec[2], force=0.0001,
+                                segment.size=0.5, size=0.1) +
+                geom_text_repel(data=insert_home_sel,
+                                aes(x=as.numeric(chromosome) - line_nudge, y=center),
+                                label=".", direction='y', nudge_x=-0.3, color='white',
+                                min.segment.length=0, segment.colour=color_vec[1], force=0.0001,
+                                segment.size=0.5, size=0.1) +
+                scale_color_manual(values=color_vec) +
+                scale_x_continuous(breaks=c(1:length(chrom_size$chromosome)),
+                                   labels=levels(chrom_size$chromosome),
+                                   limits=c(0.5,length(chrom_size$chromosome))) +
+                scale_y_continuous(breaks=mb_breaks * 1000000,
+                                   minor_breaks=seq(0,200,10) * 1000000,
+                                   labels=paste0(mb_breaks, 'Mb')) +
+                theme_bw() +
+                theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+                      axis.title = element_blank(),
+                      panel.border = element_blank(),
+                      panel.grid.major.x = element_blank(),
+                      panel.grid.minor.x = element_blank())
+        }
+        ```
+
+        ### Log, stats and info files.
+
+        In this section all data is loaded. Copy the path to look at the complete
+        information stored in these files.
+
+        #### Logs and stats
+
+        ```{r}
+        ## Parsing structure:
+        structure_list = list()
+
+    pattern_2: |
+        structure_list[['Forward']] = read.table('{pars_structure_fwd}', header=T,
+                                                 stringsAsFactors=F)
+        structure_list[['Reverse']] = read.table('{pars_structure_rev}', header=T,
+                                                 stringsAsFactors=F)
+
+        ## Parsing statistics:
+        parse_stats_list = list()
+        parse_stats_list[['Forward']] = read.table('{pars_stats_fwd}', header=T,
+                                                   stringsAsFactors=F)
+
+        parse_stats_list[['Reverse']] = read.table('{pars_stats_rev}', header=T,
+                                                   stringsAsFactors=F)
+
+
+        ## Mapping statistics:
+        map_stats_list = list()
+        map_stats_list[['Forward']] = readLines('{map_stats_fwd}')
+        map_stats_list[['Reverse']] = readLines('{map_stats_rev}')
+
+        ## Initial read lengths:
+        bamtobed_cmd = "bamToBed -bedpe -i %s"
+        map_bed_col = c('seq1', 's1', 'e1', 'seq2', 's2', 'e2', 'pair_id',
+                        'mapq', 'strand1', 'strand2')
+        map_bed_list = list()
+        map_bed_list[['Forward']] = fread(cmd=sprintf(bamtobed_cmd,
+                                                      '{map_fwd}'),
+                                          fill=T, sep='\t',
+                                          col.names=map_bed_col)[seq1==seq2,]
+        map_bed_list[['Reverse']] = fread(cmd=sprintf(bamtobed_cmd,
+                                                      '{map_rev}'),
+                                          fill=T, sep='\t',
+                                          col.names=map_bed_col)[seq1==seq2,]
+
+
+        ## Duplicate removal statistics:
+        markdup_stats_list = list()
+        markdup_stats_list[['Forward']] = readLines('{markdup_stats_fwd}')
+        markdup_stats_list[['Reverse']] = readLines('{markdup_stats_rev}')
+
+        ## Mapping statistics after sorting/filtering:
+        sorted_stats_list = list()
+        samstats_cmd = 'samtools stats %s | grep ^SN | cut -f 2-'
+
+        sorted_stats_list[['Forward']] = fread(cmd=sprintf(samstats_cmd,
+                                                           '{sorted_fwd}'),
+                                               fill=T, sep='\t')
+        sorted_stats_list[['Reverse']] = fread(cmd=sprintf(samstats_cmd,
+                                                           '{sorted_rev}'),
+                                               fill=T, sep='\t')
+
+        samidx_cmd =  'samtools idxstats %s'
+        sorted_idx_list = list()
+        sorted_idx_list[['Forward']] = fread(cmd=sprintf(samidx_cmd,
+                                                         '{sorted_fwd}'),
+                                             col.names=c('chromosome', 'length',
+                                                         'reads',
+                                                         'unmapped_reads'),
+                                             sep='\t')
+        sorted_idx_list[['Reverse']] = fread(cmd=sprintf(samidx_cmd,
+                                                         '{sorted_rev}'),
+                                             col.names=c('chromosome', 'length',
+                                                         'reads',
+                                                         'unmapped_reads'),
+                                             sep='\t')
+
+        sortedtobed_cmd = "samtools sort -n %s | bamToBed -bedpe -i -"
+
+        sorted_bed_list = list()
+        sorted_bed_list[['Forward']] = fread(cmd=sprintf(sortedtobed_cmd,
+                                                         '{sorted_fwd}'),
+                                             fill=T, sep='\t',
+                                             col.names=map_bed_col)[seq1==seq2,]
+        sorted_bed_list[['Reverse']] = fread(cmd=sprintf(sortedtobed_cmd,
+                                                         '{sorted_rev}'),
+                                             fill=T, sep='\t',
+                                             col.names=map_bed_col)[seq1==seq2,]
+        {home_exp_files}
+        ```
+
+        ### Info on putative integrations
+
+        There are two levels of putative integrations, evidence from individual
+        reads and better evidence from putative sites suported by reads from both
+        reactions in expected orientation.
+
+        In this report, both will be discussed.
+
+    code_2: |
+
+        ```{r}
+        ## randomly sample matches with integration pattern
+
+    pattern_3: |
+        random_sites = fread('{random_dist}', sep='\t',
+                             col.names=c('chromosome', 'start', 'end',
+                                         'chromosome_home', 'start_home', 'end_home',
+                                         'home', 'score_home', 'strand_home',
+                                         'dist'))
+
+        colnames=c('chromosome', 'start', 'end', 'name', 'score', 'strand',
+                   'chromosome_home', 'start_home', 'end_home',
+                   'home', 'score_home', 'strand_home', 'dist')
+        ## All mapped read pairs distance to "home"
+        mapped_read_dist_list = list()
+        mapped_read_dist_list[['Forward']] = fread('{mapped_read_dist_fwd}',
+                                                   sep='\t', col.names=colnames)
+        mapped_read_dist_list[['Reverse']] = fread('{mapped_read_dist_rev}',
+                                                   sep='\t', col.names=colnames)
+
+        ## Read pairs filtered on duplicates distance to "home"
+        sorted_read_dist_list = list()
+        sorted_read_dist_list[['Forward']] = fread('{sorted_read_dist_fwd}',
+                                                    sep='\t', col.names=colnames)
+        sorted_read_dist_list[['Reverse']] = fread('{sorted_read_dist_rev}',
+                                                    sep='\t', col.names=colnames)
+
+        ## insertion distance to "home"
+        insert_dist = fread('{insert_dist}',
+                            sep='\t', col.names=colnames)
+
+
+        ## insertions on mm10 reference genome
+        insert_hopped = fread('{insert}', sep='\t')
+        colnames(insert_hopped)[1] = 'chromosome'
+
+        chrom_size = fread('{genome_fai}',
+                           drop=3:5, col.names=c('seqnames', 'end'), key='seqnames')
+        chrom_size[,start:=0]
+
+        ```
+
+        ## Parsing and filtering statistics
+
+        Before giving a result summary, in this part different statistics will be
+        reported for each of the steps in the pipeline.
+
+        ### Step 1: Read parsing
+
+        First step of the pipeline is read parsing.
+        The sequence originating from the construct and the Tn5 are localized and
+        removed from the paired-end reads. Some of these sequences were required,
+        meaning that when this sequence could not be found in the read pair, the
+        reads were discarded.
+
+
+        #### Read structure used
+        The following read structure was used
+
+    code_3: |
+        ```{r}
+        line_list = lapply(structure_list,function(x){
+            apply(x, 1, get_structure_line)
+        })
+    pattern_4: |
+        pair_vec = c('{forward}', '{reverse}')
+        message = c('The following settings were used:\n')
+    code_4: |
+        for (i in 1:length(structure_list)){
+            direction = names(structure_list)[i]
+            structure = structure_list[[direction]]
+            lines = line_list[[direction]]
+            message = c(message,
+                        sprintf('%s reaction %s:', direction, pair_vec[i]))
+            if (any(structure$second.read=='False')){
+                message = c(message, '\tMate1:')
+                for (line in lines[structure$second.read=='False']){
+                    message = c(message, line)
+                }
+            }
+            if (any(structure$second.read=='True')){
+                message = c(message, '\tMate2:')
+                for (line in lines[structure$second.read=='True']){
+                    message = c(message, line)
+                }
+            }
+
+        }
+        cat(paste(message, collapse='\n'))
+        ```
+
+        #### Parsing statistics
+        This resulted in the following filtering statistics
+
+        ```{r}
+
+        for (i in 1:length(structure_list)){
+            direction = names(structure_list)[i]
+            structure = structure_list[[direction]]
+            parse_stats = parse_stats_list[[direction]]
+
+            total = parse_stats[['reads']]
+            left = parse_stats[['reads_written']]
+
+            cat(sprintf('For the %s reaction:\n', direction))
+
+            cat(sprintf('\tTotal number of reads: %i (100%%)\n',
+                        total))
+            cat(sprintf('\tReads remaining after filtering: %i (%.1f%%)\n',
+                        left, left / total * 100))
+            cat(sprintf('\tReads filtered: %i (%.1f%%)\n\tOf these reads:\n',
+                        total-left, (total-left) / total * 100))
+            remaining = total
+            for (j in which(structure$req=='present')){
+                pat_id = structure$ID[j]
+                filtered = remaining - parse_stats[[pat_id]]
+                remaining = parse_stats[[pat_id]]
+                cat(sprintf('\t\tReads missing required %s: %i (%.1f%%)\n', pat_id,
+                            filtered, filtered / total * 100))
+            }
+            short = parse_stats[['n_tooshort']]
+            cat(sprintf('\t\tReads too short after trimming: %i (%.1f%%)\n\n',
+                        short, short / total * 100))
+        }
+        ```
+
+        ### Step 2: Aligning reads to the genome
+    pattern_5: |
+
+        {bowtie_options}
+        This resulted in the following alignment stats:
+    code_5: |
+
+        ```{r}
+        for (direction in names(map_stats_list)){
+            stats = map_stats_list[[direction]]
+            cat(sprintf('For the %s reaction:\n', direction))
+            for (line in stats){
+                cat(sprintf('  %s\n', line))
+            }
+            cat('\n')
+        }
+
+        ```
+
+        #### Read lengths **BEFORE** dublicate removal
+
+        Before duplicate removal, based on the alignments we estimated the following
+        distribution of fragment lengths.
+
+        ```{r}
+        length_list = lapply(names(map_bed_list), function(direction){
+            len = map_bed_list[[direction]][, list(length = max(e1,e2) - min(s1,s2),
+                                                   type = direction),
+                                            by=pair_id]
+            return(len)
+        })
+        length_before = do.call(rbind, length_list)
+        p_before = ggplot(length_before, aes(x=log10(length), color=type)) +
+            geom_density() +
+            ggtitle('Read lengths of "hopped" tagmentation before duplicate removal') +
+            xlab('log10(bp)') +
+            theme_bw()
+
+        p_before
+        ```
+
+        ### Step 3: Removing duplicates and filtering disconcordant/unmapped pairs
+
+        Only read pairs that align in the correct orientation towards eachother
+        can be trusted to be correct PCR amplifications. Since Tn5 transposition is
+        random, reads that overlap and have the same sequence are likely to be
+        PCR duplicates. These need to be removed to get more accurate results.
+
+        ```{r}
+        idx_list = list()
+        for (direction in names(markdup_stats_list)){
+            dup = markdup_stats_list[[direction]]
+            cat(sprintf('For the %s reaction:\n', direction))
+            match_df = str_match(dup, '.*? ([0-9]+) ([^ ]*).*')
+
+            pair_i = which(match_df[,3]=='end')
+            pairs = as.numeric(match_df[pair_i, 2])
+
+            single_i = which(match_df[,3]=='single')
+            single = as.numeric(match_df[single_i, 2])
+
+            duplicate_i = which(match_df[,3]=='duplicates')
+            duplicates = as.numeric(match_df[duplicate_i, 2])
+
+            total = pairs * 2 + single
+
+            cat(sprintf('%s, %i reads (%.1f%%)\n', dup[pair_i],
+                        pairs * 2, (pairs * 2)/total * 100))
+            cat(sprintf('%s (%.1f%%)\n', dup[single_i],
+                        single/total * 100))
+            cat(sprintf('%s (%.1f%%)\n', dup[duplicate_i],
+                        duplicates/total * 100))
+
+            sort = sorted_stats_list[[direction]]
+            left = as.integer(sort[1, 2])
+            mapq0 = as.integer(sort[which(sort[,1]=='reads MQ0:'), 2])
+            cat(sprintf('  after filterering %i reads (%i pairs) remained (%.1f%%)\n',
+                        left, left / 2, left/total * 100))
+            cat(sprintf('    of these reads, %i reads had a mapping quality of 0(%.1f%%)',
+                        mapq0, mapq0 / left * 100))
+
+            idx = sorted_idx_list[[direction]][,-c('length','unmapped_reads')]
+            idx[,percentage:=sprintf('%.2f%%', reads /
+                                     sum(reads) * 100)]
+            col_vec = paste(colnames(idx), direction, sep='_')
+            read_col = colnames(idx) %in% c('reads', 'percentage')
+            colnames(idx)[read_col] = col_vec[read_col]
+            idx_list[[direction]] = idx
+            cat('\n\n')
+
+        }
+        idx_dt = merge(idx_list[['Forward']], idx_list[['Reverse']],
+                       by="chromosome")
+        idx_kable = kable(idx_dt)
+        style = kable_styling(idx_kable, bootstrap_options = "striped", full_width = F)
+
+        cat('Reads aligned to the following chromosomes and additional sequences:\n')
+        column_spec(style, column=1, bold=T)
+        ```
+
+        #### Read lengths **AFTER** dublicate removal
+        After duplicate removal, based on the alignments we estimated the following
+        distribution of fragment lengths. The distribution plot of the read
+        lengths before filtering here is scaled to the same scale as the
+        distribution after filtering.
+
+
+        ```{r, read_length_after}
+        length_list = lapply(names(sorted_bed_list), function(direction){
+            len = sorted_bed_list[[direction]][, list(length = max(e1,e2) - min(s1,s2),
+                                                   type = direction),
+                                            by=pair_id]
+            return(len)
+        })
+        length_after = do.call(rbind, length_list)
+        p_after = ggplot(length_after, aes(x=log10(length), color=type)) +
+                        geom_density() +
+                        ggtitle('Read lengths of "hopped" tagmentation after duplicate removal') +
+                        theme_bw()
+
+        xy_list = get_plot_xy(p_after + coord_cartesian(expand=F))
+
+        p_after
+
+        ## For comparison the before length distribution again,
+        ## but set to the same x-axis scales as the after plot
+        p_before + coord_cartesian(xlim = xy_list$x)
+
+        ```
+
+        ## Home element statistics
+    pattern_6: |
+
+        {home_stats}
+
+        ## Result Summary
+
+        In this section, some results of the experiment will be shown.
+        A comparison will be made to random putative integration sites.
+        These sites are randomly drawn from all matches with the recognition
+        pattern of the transposon.
+
+        ### Read distribution
+
+        First, let's focus on the read distribution. Some questions we would like to
+        answer:
+
+        -   How many reads overlap with the home construct versus other regions in
+            the genome?
+
+        -   Are reads in other regions (putative hopped elements) closer to the
+            home construct than expected by chance?
+    code_6: |
+        #### Read distribution before removal of duplicates
+
+        To better asses the ratio between reads overlapping the home regions
+        versus reads that do not, we can look at distribution both before and
+        after the removal of duplicates.
+
+        ```{r, read_distribution_mapped}
+
+        n_random = nrow(random_sites)
+        same_chrom_rand = random_sites[dist>-1,]
+        n_chrom_rand = nrow(same_chrom_rand)
+        n_close_rand = nrow(same_chrom_rand[dist<1*10^6,])
+
+        for (direction in names(mapped_read_dist_list)){
+            read_dist = mapped_read_dist_list[[direction]]
+            cat(sprintf('For the %s reaction:\n', direction))
+            n_reads = nrow(read_dist)
+            cat(sprintf('  of the %i read pairs:\n', n_reads))
+
+            no_overlap = read_dist[dist!=0, ]
+            n_no_overlap = nrow(no_overlap)
+
+            cat(sprintf('    %i pairs (%.1f%%) did not overlap with "home" region, of these:\n',
+                        n_no_overlap, n_no_overlap / n_reads * 100))
+
+            same_chrom = no_overlap[dist>-1,]
+            n_chrom = nrow(same_chrom)
+            cat(sprintf('      %i pairs were on the same chromosome as a "home".\n',
+                        n_chrom))
+            if (n_no_overlap > 0){
+                cat(sprintf('          (%.1f%% compared to %.1f%% for random draws)\n',
+                            n_chrom / n_no_overlap * 100,
+                            n_chrom_rand / n_random * 100))
+            }
+
+            n_close = nrow(same_chrom[dist<1*10^6,])
+            cat(sprintf('      %i pairs were <1Mb from a "home".\n',
+                        n_close))
+            if (n_no_overlap > 0){
+                cat(sprintf('          (%.1f%% compared to %.1f%% for random draws)\n',
+                            n_close / n_no_overlap * 100,
+                            n_close_rand / n_random * 100))
+            }
+        }
+        ```
+
+        #### Read distribution after removal of duplicates
+
+        ```{r, read_distribution_sorted}
+
+        n_random = nrow(random_sites)
+        same_chrom_rand = random_sites[dist>-1,]
+        n_chrom_rand = nrow(same_chrom_rand)
+        n_close_rand = nrow(same_chrom_rand[dist<1*10^6,])
+
+        for (direction in names(sorted_read_dist_list)){
+            read_dist = sorted_read_dist_list[[direction]]
+            cat(sprintf('For the %s reaction:\n', direction))
+            n_reads = nrow(read_dist)
+            cat(sprintf('  of the %i read pairs:\n', n_reads))
+
+            no_overlap = read_dist[dist!=0, ]
+            n_no_overlap = nrow(no_overlap)
+
+            cat(sprintf('    %i pairs (%.1f%%) did not overlap with "home" region, of these:\n',
+                        n_no_overlap, n_no_overlap / n_reads * 100))
+
+            same_chrom = no_overlap[dist>-1,]
+            n_chrom = nrow(same_chrom)
+            cat(sprintf('      %i pairs were on the same chromosome as a "home".\n',
+                        n_chrom))
+            if (n_no_overlap > 0){
+                cat(sprintf('          (%.1f%% compared to %.1f%% for random draws)\n',
+                            n_chrom / n_no_overlap * 100,
+                            n_chrom_rand / n_random * 100))
+            }
+
+            n_close = nrow(same_chrom[dist<1*10^6,])
+            cat(sprintf('      %i pairs were <1Mb from a "home".\n',
+                        n_close))
+            if (n_no_overlap > 0){
+                cat(sprintf('          (%.1f%% compared to %.1f%% for random draws)\n',
+                            n_close / n_no_overlap * 100,
+                            n_close_rand / n_random * 100))
+            }
+        }
+        ```
+
+
+        ### Distribution of putative insertion sites
+
+        We can ask the same thing about putative insertion sites:
+
+        -   How many insertion sites overlap with the home construct versus other
+            regions in the genome?
+
+        -   Are hopped putative insertions closer to the
+            home construct than expected by chance?
+
+        ```{r, read_distribution_hopped}
+
+        message = c(sprintf('For putative insertion sites:', direction))
+        n_sites = nrow(insert_dist)
+        message = c(message, sprintf('  of the %i site(s):', n_sites))
+        if (n_sites > 0){
+
+            no_overlap = insert_dist[dist!=0, ]
+            n_no_overlap = nrow(no_overlap)
+
+            message = c(message,
+                        sprintf(paste('    %i insertions (%.1f%%) did not overlap with',
+                                      '"home" region, of these:'),
+                                n_no_overlap, n_no_overlap / n_sites * 100))
+
+            same_chrom = no_overlap[dist>-1,]
+            n_chrom = nrow(same_chrom)
+            message = c(message,
+                        sprintf('      %i insertions were on the same chromosome as a "home".',
+                        n_chrom))
+            if (n_no_overlap > 0){
+                message = c(message,
+                            sprintf('          (%.1f%% compared to %.1f%% for random draws)',
+                            n_chrom / n_no_overlap * 100,
+                            n_chrom_rand / n_random * 100))
+            }
+
+            n_close = nrow(same_chrom[dist<1*10^6,])
+            message = c(message,
+                        sprintf('      %i insertions were <1Mb from a "home".',
+                        n_close))
+            if (n_no_overlap > 0){
+                message = c(message,
+                            sprintf('          (%.1f%% compared to %.1f%% for random draws)',
+                            n_close / n_no_overlap * 100,
+                            n_close_rand / n_random * 100))
+            }
+        }
+        cat(paste(message, collapse='\n'))
+
+
+        insert_hopped[,max_mapq:=max(mapq_1,mapq_2), by=name]
+        insert_hopped[start_gap == ".",
+                      start_gap := start]
+        insert_hopped[end_gap == ".",
+                      end_gap := end]
+        insert_hopped_sel = insert_hopped[,c('name', 'chromosome', 'start_gap',
+                                             'end_gap', 'strand', 'max_mapq',
+                                             'p_adj')]
+        colnames(insert_hopped_sel) = c('name', 'chromosome', 'start', 'end',
+                                        'strand', 'max_mapq', 'p_adjusted')
+
+        insert_kable = kable(insert_hopped_sel)
+        style = kable_styling(insert_kable, bootstrap_options = "striped", full_width = F)
+        column_spec(style, column=1, bold=T)
+        ```
+
+        ### Density plots of distributions
+
+        We can also visualize this in a density plot
+
+        ```{r, density_plot}
+
+        mapped_dist_list = lapply(names(mapped_read_dist_list),
+                                  function(direction){
+            dist = unlist(mapped_read_dist_list[[direction]][dist>0,dist])
+            if (length(dist) > 0){
+                return(data.table(type=paste(direction, 'read pairs BEFORE',
+                                             'duplicate removal'),
+                                  dist=dist))
+            }
+        })
+
+        sorted_dist_list = lapply(names(mapped_read_dist_list),
+                                  function(direction){
+            dist = unlist(mapped_read_dist_list[[direction]][dist>0,dist])
+            if (length(dist) > 0){
+                return(data.table(type=paste(direction, 'read pairs AFTER',
+                                             'duplicate removal'),
+                                  dist=dist))
+            }
+        })
+
+        read_dist_dt = rbind(do.call(rbind, mapped_dist_list),
+                             do.call(rbind, sorted_dist_list))
+        dist_dt = rbind(read_dist_dt,
+                        data.table(type='Random draw',
+                                   dist=same_chrom_rand$dist))
+        if (nrow(same_chrom)>0){
+            dist_dt = rbind(dist_dt,
+                            data.table(type='Putative Insertion',
+                                       dist=same_chrom$dist))
+        }
+
+        ggplot(dist_dt, aes(x=log10(dist), color=type)) +
+            geom_density() +
+            theme_bw()
+
+        ```
+
+        ### Ideogram of insertion sites
+
+        Following plots show the locations of all putative insertion sites found
+        for the hopped transposon (and depending on experiment the home
+        transposon).
+
+        There are different levels of evidence for putative insertion sites.
+        The most basic of evidence is having reads from both side of the
+        transposon overlapping. The next level of evidence is that there is a
+        clear center which we can identify from which these reads originate
+        on either side. The most stringent level of evidence is that the
+        directionality of the reads orriginating from this center is significant.
+        This test check whether all forward reaction reads are on one side of the
+        center, while all reverse reads are on the other.
+
+        This test was based on the TagMeppr software package
+
+        ```{r ideogram, fig.width=12, fig.height=8}
+        ## Settings for the plot:
+        line_nudge = 0.2
+        home_color = 'red'
+        hopped_color = 'blue'
+
+    pattern_7: |
+        insert_home_sel[,region:='{home_ID}']
+        insert_hopped_sel[,region:='{ID}']
+        color_vec = c('{home_ID}'='blue', '{ID}'='red')
+
+    code_7: |
+        hopped_names = insert_dist[dist!=0, name]
+        print(hopped_names)
+        plot_ideogram(chrom_size, insert_home_sel,
+                      insert_hopped_sel, line_nudge, color_vec,
+                      'All putative insertion sites')
+
+        plot_ideogram(chrom_size, insert_home_sel,
+                      insert_hopped_sel[name %in% hopped_names, ], line_nudge, color_vec,
+                      'All putative hopped insertion sites')
+
+        plot_ideogram(chrom_size, insert_home_sel[strand!='.', ],
+                      insert_hopped_sel[strand!='.' & name %in% hopped_names, ],
+                      line_nudge, color_vec,
+                                  'Putative insertion sites with "identifiable center"')
+        if ('p_adjusted' %in% colnames(insert_home_sel)){
+            print(plot_ideogram(chrom_size, insert_home_sel[p_adjusted<0.05, ],
+                                insert_hopped_sel[p_adjusted<0.05 & name %in% hopped_names, ],
+                                line_nudge, color_vec,
+                                'Putative insertion sites with directionality p < 0.05'))
+
+        } else {
+            print(plot_ideogram(chrom_size, insert_home_sel,
+                                insert_hopped_sel[p_adjusted<0.05 & name %in% hopped_names, ],
+                                line_nudge, color_vec,
+                                'Putative insertion sites with directionality p < 0.05'))
+
+        }
+
+        ```
+
+intro_arms: |
+    Aligning the sequence of the homology arms from the targeting vector
+    to the reference genome.
+
+files_arms: |
+    arm_insert = fread('{arm_region}',
+                       col.names=c('chromosome', 'start', 'end', 'name',
+                                   'score', 'strand'))
+
+stats_arms: |
+    ### location(s) found by aligning homology arms
+
+    ```{r, stat_arms}
+    k = kable(arm_insert[,c('name', 'chromosome', 'start', 'end', 'strand')])
+    style = kable_styling(k, bootstrap_options = "striped", full_width = F)
+    column_spec(style, column=1, bold=T)
+
+    ```
+
+intro_home_tagmap: |
+    Using tagmap on the home construct (ID:{ID}).
+    {ID} combines evidence from {forward} and {reverse} on each side of the
+    construct from which the transposon hopped.
+
+files_home_tagmap: |
+    ## Parsing structure home tagmap:
+    structure_list_home = list()
+    parse_stats_list_home = list()
+    map_stats_list_home = list()
+    map_bed_list_home = list()
+    markdup_stats_list_home = list()
+    sorted_stats_list_home = list()
+    sorted_idx_list_home = list()
+    sorted_bed_list_home = list()
+
+
+    fwd = '{pars_structure_fwd}'
+    rev = '{pars_structure_rev}'
+
+    samtools_cmd = 'samtools stats %s | grep ^SN | cut -f 2-'
+    if (fwd!="") {{
+        structure_list_home[['Forward']] = read.table(fwd,
+                                                      header=T,
+                                                      stringsAsFactors=F)
+        parse_stats_list_home[['Forward']] = read.table('{pars_stats_fwd}',
+                                                      header=T,
+                                                         stringsAsFactors=F)
+
+        map_stats_list_home[['Forward']] = readLines('{map_stats_fwd}')
+
+        map_bed_list_home[['Forward']] = fread(cmd=sprintf(bamtobed_cmd,
+                                                           '{map_fwd}'),
+                                               fill=T, sep='\t',
+                                               col.names=map_bed_col)[seq1==seq2 & seq1!='.',]
+
+        markdup_stats_list_home[['Forward']] = readLines('{markdup_stats_fwd}')
+
+        sorted_stats_list_home[['Forward']] = fread(cmd=sprintf(samtools_cmd,
+                                                                '{sorted_fwd}'),
+                                                    fill=T, sep='\t')
+
+        sorted_idx_list_home[['Forward']] = fread(cmd=sprintf(samidx_cmd,
+                                                              '{sorted_fwd}'),
+                                                  col.names=c('chromosome', 'length',
+                                                              'reads',
+                                                              'unmapped_reads'),
+                                                  sep='\t')
+
+        sorted_bed_list_home[['Forward']] = fread(cmd=sprintf(sortedtobed_cmd,
+                                                              '{sorted_fwd}'),
+                                                  fill=T, sep='\t',
+                                                  col.names=map_bed_col)[seq1==seq2,]
+
+    }}
+
+    if (rev!="") {{
+        structure_list_home[['Reverse']] = read.table(rev,
+                                                      header=T,
+                                                      stringsAsFactors=F)
+
+
+        parse_stats_list_home[['Reverse']] = read.table('{pars_stats_rev}',
+                                                      header=T,
+                                                         stringsAsFactors=F)
+
+
+        map_stats_list_home[['Reverse']] = readLines('{map_stats_rev}')
+
+
+        map_bed_list_home[['Reverse']] = fread(cmd=sprintf(bamtobed_cmd,
+                                                           '{map_rev}'),
+                                               fill=T, sep='\t',
+                                               col.names=map_bed_col)[seq1==seq2 & seq1!='.',]
+
+        markdup_stats_list_home[['Reverse']] = readLines('{markdup_stats_rev}')
+
+
+
+        sorted_stats_list_home[['Reverse']] = fread(cmd=sprintf(samtools_cmd,
+                                                                '{sorted_rev}'),
+                                                    fill=T, sep='\t')
+
+
+        sorted_idx_list_home[['Reverse']] = fread(cmd=sprintf(samidx_cmd,
+                                                              '{sorted_rev}'),
+                                                  col.names=c('chromosome', 'length',
+                                                              'reads',
+                                                              'unmapped_reads'),
+                                                  sep='\t')
+
+
+        sorted_bed_list_home[['Reverse']] = fread(cmd=sprintf(sortedtobed_cmd,
+                                                              '{sorted_rev}'),
+                                                  fill=T, sep='\t',
+                                                  col.names=map_bed_col)[seq1==seq2,]
+
+    }}
+    ## putative home element integrations
+    insert_home = fread('{insert_home}')
+    colnames(insert_home)[1] = "chromosome"
+
+stats_home_tagmap:
+    code_1: |
+        ## Parsing and filtering statistics for home element
+
+        Similar statistics can be generated for tagmap on the home element.
+
+        ### Step 1: Read parsing for home element
+
+        First step of the pipeline is read parsing.
+        The sequence originating from the construct and the Tn5 are localized and
+        removed from the paired-end reads. Some of these sequences were required,
+        meaning that when this sequence could not be found in the read pair, the
+        reads were discarded.
+
+
+        #### Read structure used for home element
+        The following read structure was used
+
+        ```{r}
+        line_list = lapply(structure_list_home,function(x){
+            apply(x, 1, get_structure_line)
+        })
+    pattern_1: |
+        pair_vec = c('{forward}', '{reverse}')
+    code_2: |
+        message = c('The following settings were used:\n')
+        for (i in 1:length(structure_list_home)){
+            direction = names(structure_list_home)[i]
+            structure = structure_list_home[[direction]]
+            lines = line_list[[direction]]
+            message = c(message,
+                        sprintf('%s reaction %s:', direction, pair_vec[i]))
+            if (any(structure$second.read=='False')){
+                message = c(message, '\tMate1:')
+                for (line in lines[structure$second.read=='False']){
+                    message=c(message, line)
+                }
+            }
+            if (any(structure$second.read=='True')){
+                message = c(message, '\tMate2:')
+                for (line in lines[structure$second.read=='True']){
+                    message=c(message, line)
+                }
+            }
+
+        }
+        cat(paste(message,collapse='\n'))
+        ```
+
+        #### Parsing statistics
+        This resulted in the following filtering statistics
+
+        ```{r}
+
+        for (i in 1:length(structure_list_home)){
+            direction = names(structure_list_home)[i]
+            structure = structure_list_home[[direction]]
+            parse_stats = parse_stats_list_home[[direction]]
+
+            total = parse_stats[['reads']]
+            left = parse_stats[['reads_written']]
+
+            cat(sprintf('For the %s reaction:\n', direction))
+
+            cat(sprintf('\tTotal number of reads: %i (100%%)\n',
+                        total))
+            cat(sprintf('\tReads remaining after filtering: %i (%.1f%%)\n',
+                        left, left / total * 100))
+            cat(sprintf('\tReads filtered: %i (%.1f%%)\n\tOf these reads:\n',
+                        total-left, (total-left) / total * 100))
+            remaining = total
+            for (j in which(structure$req=='present')){
+                pat_id = structure$ID[j]
+                filtered = remaining - parse_stats[[pat_id]]
+                remaining = parse_stats[[pat_id]]
+                cat(sprintf('\t\tReads missing required %s: %i (%.1f%%)\n', pat_id,
+                            filtered, filtered / total * 100))
+            }
+            short = parse_stats[['n_tooshort']]
+            cat(sprintf('\t\tReads too short after trimming: %i (%.1f%%)\n\n',
+                        short, short / total * 100))
+        }
+        ```
+
+        ### Step 2: Aligning reads to the genome
+
+    pattern_3: |
+        {bowtie_options}
+        This resulted in the following alignment stats:
+
+    code_3: |
+        ```{r}
+        for (direction in names(map_stats_list)){
+            stats = map_stats_list_home[[direction]]
+            cat(sprintf('For the %s reaction:\n', direction))
+            for (line in stats){
+                cat(sprintf('  %s\n', line))
+            }
+            cat('\n')
+        }
+
+        ```
+
+        #### Read lengths **BEFORE** dublicate removal
+
+        Before duplicate removal, based on the alignments we estimated the following
+        distribution of fragment lengths.
+
+        ```{r}
+        length_list = lapply(names(map_bed_list_home), function(direction){
+            len = map_bed_list_home[[direction]][, list(length = max(e1,e2) - min(s1,s2),
+                                                        type = direction),
+                                                 by=pair_id]
+            return(len)
+        })
+        length_before = do.call(rbind, length_list)
+        p_before_home = ggplot(length_before, aes(x=log10(length), color=type)) +
+            geom_density() +
+            ggtitle('Read lengths of "home" tagmentation before duplicate removal') +
+            xlab('log10(bp)') +
+            theme_bw()
+        ```
+
+        ### Step 3: Removing duplicates and filtering disconcordant/unmapped pairs
+
+        Only read pairs that align in the correct orientation towards eachother
+        can be trusted to be correct PCR amplifications. Since Tn5 transposition is
+        random, reads that overlap and have the same sequence are likely to be
+        PCR duplicates. These need to be removed to get more accurate results.
+
+        ```{r}
+        idx_list = list()
+        for (direction in names(markdup_stats_list_home)){
+            dup = markdup_stats_list_home[[direction]]
+            cat(sprintf('For the %s reaction:\n', direction))
+            match_df = str_match(dup, '.*? ([0-9]+) ([^ ]*).*')
+
+            pair_i = which(match_df[,3]=='end')
+            pairs = as.numeric(match_df[pair_i, 2])
+
+            single_i = which(match_df[,3]=='single')
+            single = as.numeric(match_df[single_i, 2])
+
+            duplicate_i = which(match_df[,3]=='duplicates')
+            duplicates = as.numeric(match_df[duplicate_i, 2])
+
+            total = pairs * 2 + single
+
+            cat(sprintf('%s, %i reads (%.1f%%)\n', dup[pair_i],
+                        pairs * 2, (pairs * 2)/total * 100))
+            cat(sprintf('%s (%.1f%%)\n', dup[single_i],
+                        single/total * 100))
+            cat(sprintf('%s (%.1f%%)\n', dup[duplicate_i],
+                        duplicates/total * 100))
+
+            sort = sorted_stats_list_home[[direction]]
+            left = as.integer(sort[1, 2])
+            mapq0 = as.integer(sort[which(sort[,1]=='reads MQ0:'), 2])
+            cat(sprintf('  after filterering %i reads (%i pairs) remained (%.1f%%)\n',
+                        left, left / 2, left/total * 100))
+            cat(sprintf('    of these reads, %i reads had a mapping quality of 0(%.1f%%)',
+                        mapq0, mapq0 / left * 100))
+
+            idx = sorted_idx_list_home[[direction]][,-c('length','unmapped_reads')]
+            idx[,percentage:=sprintf('%.2f%%', reads /
+                                     sum(reads) * 100)]
+            col_vec = paste(colnames(idx), direction, sep='_')
+            read_col = colnames(idx) %in% c('reads', 'percentage')
+            colnames(idx)[read_col] = col_vec[read_col]
+            idx_list[[direction]] = idx
+            cat('\n\n')
+
+        }
+        if ('Forward' %in% idx_list && 'Reverse' %in% idx_list){
+            idx_dt = merge(idx_list[['Forward']], idx_list[['Reverse']],
+                           by="chromosome")
+        } else {
+            idx_dt = idx_list[[1]]
+        }
+        idx_kable = kable(idx_dt)
+
+        style = kable_styling(idx_kable, bootstrap_options = "striped", full_width = F)
+
+        cat('Reads aligned to the following chromosomes and additional sequences:\n')
+        column_spec(style, column=1, bold=T)
+        ```
+
+
+        #### Read lengths **AFTER** dublicate removal
+        After duplicate removal, based on the alignments we estimated the following
+        distribution of fragment lengths. The distribution plot of the read
+        lengths before filtering here is scaled to the same scale as the
+        distribution after filtering.
+
+
+        ```{r, read_length_after_home}
+        length_list = lapply(names(sorted_bed_list_home), function(direction){
+            len = sorted_bed_list_home[[direction]][, list(length = max(e1,e2) - min(s1,s2),
+                                                   type = direction),
+                                            by=pair_id]
+            return(len)
+        })
+        length_after = do.call(rbind, length_list)
+        p_after_home = ggplot(length_after, aes(x=log10(length), color=type)) +
+                        geom_density() +
+                        ggtitle('Read lengths of "home" tagmentation after duplicate removal') +
+                        theme_bw()
+
+        xy_list = get_plot_xy(p_after_home + coord_cartesian(expand=F))
+
+        p_after_home
+
+        ## For comparison the before length distribution again,
+        ## but set to the same x-axis scales as the after plot
+        p_before_home + coord_cartesian(xlim = xy_list$x)
+
+
+        ```
+
+    pattern_4: |
+
+        ### location(s) found by tagmap on {ID}
+        The following integration sites were found for the home construct.
+        Each integration was scored on the balance between pairs from Forward
+        and Reverse reads on either side of the putative integration site.
+
+        This scoring was copied from the TagMeppr pipeline.
+        (https://github.com/robinweide/tagmeppr)
+
+    code_4: |
+        ```{r, home_insert}
+        if (!"" %in% c(fwd, rev)){
+            insert_home[,max_mapq:=max(mapq_1,mapq_2), by=name]
+            no_center = insert_home[,which(start_gap=='.')]
+
+            insert_home[no_center,
+                        start_gap := start]
+            insert_home[no_center,
+                        end_gap := end]
+            insert_home_sel = insert_home[,c('name', 'chromosome', 'start_gap',
+                                             'end_gap', 'strand', 'max_mapq',
+                                             'p_adj')]
+            colnames(insert_home_sel) = c('name', 'chromosome', 'start', 'end',
+                                          'strand', 'max_mapq', 'p_adjusted')
+        } else {
+            insert_home_sel = insert_home
+            no_center = c()
+        }
+        insert_kable = kable(insert_home_sel)
+        style = kable_styling(insert_kable, bootstrap_options = "striped", full_width = F)
+        if (length(no_center) > 0){
+            style = row_spec(style, no_center, color='red')
+        }
+        column_spec(style, column=1, bold=T)
+
+        ```

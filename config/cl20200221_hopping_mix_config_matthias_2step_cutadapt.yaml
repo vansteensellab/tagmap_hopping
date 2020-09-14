@@ -1,5 +1,5 @@
 
-outdir: /DATA/usr/c.leemans/projects/tagmap_hopping/results/cl20200122_hopping_mathias
+outdir: /DATA/usr/c.leemans/projects/tagmap_hopping/results/cl20200221_hopping_mathias_2step
 input_dir: '/DATA/usr/m.eder/Tn5_tagmentation/E919_SB_PB_primer_test'
 
 ## file_info contains information on the input files.
@@ -80,7 +80,8 @@ structure:
         r1_rev  -  CTGTCTCTTATACACATCTGACGCTGCCGACG  const   -       True var -
     For_PB: |
         ID      5'             3' type                       req     second-read pos   keep-bases
-        r2      GTACGTCACAATATGATTATCTTTCTAGGGTTAA -  const  present  True  -  4
+        r2_a      GTACGTCACAATATGATTATC -  const  present  True  -  -
+        r2_b      TTTCTAGGGTTAA -  const  present  True  -  4
         r1      CGTCGGCAGCGTCAGATGTGTATAAGAGACAG  -  const   -  False var -
         r1_rev  -  CTGTCTCTTATACACATCTGACGCTGCCGACG  const   -        True var -
         r2_rev  -  TTAACCCTAGAAAGATAATCATAT  const           -        False var 4
@@ -88,7 +89,8 @@ structure:
         ID      5'    3' type    req     second-read pos   keep-bases
         r1      CGTCGGCAGCGTCAGATGTGTATAAGAGACAG  -  const   - False var -
         r2_rev  -  TTAACCCTAGAAAGATAGTCTGCGTAAAATTG  const   -       False var 4
-        r2      CAATTTTACGCAGACTATCTTTCTAGGGTTAA  -  const   present True  - 4
+        r2_a      CAATTTTACGCAGACTATC  -  const   present True  - -
+        r2_b      TTTCTAGGGTTAA  -  const   present True  - 4
         r1_rev  -  CTGTCTCTTATACACATCTGACGCTGCCGACG  const   -       True var -
     Rev_SB_home: |
         ID      5'    3' type    req     second-read pos   keep-bases

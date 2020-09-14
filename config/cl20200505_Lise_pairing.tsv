@@ -1,0 +1,31 @@
+ID	Forward	Reverse	home_location	home_sequence	hybrid
+B1h_PB	B1h_PB_fwd	B1h_PB_rev	-	-	CAST-129S
+B2h_PB	B2h_PB_fwd	B2h_PB_rev	-	-	CAST-129S
+B3h_PB	B3h_PB_fwd	B3h_PB_rev	-	-	CAST-129S
+C2h_PB	C2h_PB_fwd	C2h_PB_rev	-	-	CAST-129S
+D1h_PB	D1h_PB_fwd	D1h_PB_rev	-	-	CAST-129S
+D2h_PB	D2h_PB_fwd	D2h_PB_rev	-	-	CAST-129S
+A4m_PB	A4m_PB_fwd	A4m_PB_rev	-	-	CAST-129S
+A5m_PB	A5m_PB_fwd	A5m_PB_rev	-	-	CAST-129S
+A6m_PB	A6m_PB_fwd	A6m_PB_rev	-	-	CAST-129S
+B4m_PB	B4m_PB_fwd	B4m_PB_rev	-	-	CAST-129S
+B5m_PB	B5m_PB_fwd	B5m_PB_rev	-	-	CAST-129S
+B6m_PB	B6m_PB_fwd	B6m_PB_rev	-	-	CAST-129S
+C5m_PB	C5m_PB_fwd	C5m_PB_rev	-	-	CAST-129S
+C6m_PB	C6m_PB_fwd	C6m_PB_rev	-	-	CAST-129S
+B1h_SB	B1h_SB_fwd	B1h_SB_rev	B1h_PB	pJOYC037	CAST-129S
+B2h_SB	B2h_SB_fwd	B2h_SB_rev	B2h_PB	pJOYC037	CAST-129S
+B3h_SB	B3h_SB_fwd	B3h_SB_rev	B3h_PB	pJOYC037	CAST-129S
+C2h_SB	C2h_SB_fwd	C2h_SB_rev	C2h_PB	pJOYC037	CAST-129S
+D1h_SB	D1h_SB_fwd	D1h_SB_rev	D1h_PB	pJOYC037	CAST-129S
+D2h_SB	D2h_SB_fwd	D2h_SB_rev	D2h_PB	pJOYC037	CAST-129S
+A4m_SB	A4m_SB_fwd	A4m_SB_rev	A4m_PB	pJOYC037	CAST-129S
+A5m_SB	A5m_SB_fwd	A5m_SB_rev	A5m_PB	pJOYC037	CAST-129S
+A6m_SB	A6m_SB_fwd	A6m_SB_rev	A6m_PB	pJOYC037	CAST-129S
+B4m_SB	B4m_SB_fwd	B4m_SB_rev	B4m_PB	pJOYC037	CAST-129S
+B5m_SB	B5m_SB_fwd	B5m_SB_rev	B5m_PB	pJOYC037	CAST-129S
+B6m_SB	B6m_SB_fwd	B6m_SB_rev	B6m_PB	pJOYC037	CAST-129S
+C5m_SB	C5m_SB_fwd	C5m_SB_rev	C5m_PB	pJOYC037	CAST-129S
+C6m_SB	C6m_SB_fwd	C6m_SB_rev	C6m_PB	pJOYC037	CAST-129S
+12	-	12	-	-	Mouse cells
+13	-	13	-	-	Mouse cells

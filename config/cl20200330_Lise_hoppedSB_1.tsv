@@ -1,0 +1,5 @@
+ID	Forward	Reverse	home_location	home_sequence	hybrid
+wt10	mESCs_wt10_Fw_PB	mESCs_wt10_Rv_PB	-	-	CAST-129S
+wt10.44_PB	mESCs_wt10.44_Fw_PB	mESCs_wt10.44_Rv_PB	-	-	CAST-129S
+wt10.44	mESCs_wt10.44_Fw_SB	mESCs_wt10.44_Rv_SB	wt10	pJOYC037	CAST-129S
+wt10.44B	mESCs_wt10.44_Fw_SB	mESCs_wt10.44_Rv_SB	wt10.44_PB	pJOYC037	CAST-129S

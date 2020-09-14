@@ -24,7 +24,8 @@ while getopts ':h:a:b:c:d:m:g:o:t:' option; do
        ;;
     a) bed=($OPTARG)
        ;;
-    b) bam=($OPTARG)
+    b) echo $OPTARG
+       bam=($OPTARG)
        ;;
     c) cut=$OPTARG
        ;;
@@ -53,14 +54,14 @@ shift $((OPTIND - 1))
 
 touch $temp
 
-if [ ${bam[1]} == '' ]
+if [ "${bam[1]}" == '' ]
 then
     awk -vOFS='\t' '{print $0, NR}' $bed | \
         bedtools intersect -bed -wb -abam $bam -b - > $temp
 else
     bedtools intersect -a <(awk -vG=$gap '{printf "%s\t%i\t%i\n", $1, $2 - G/2, $3 + G/2}'  ${bed[0]}) \
                        -b <(awk -vG=$gap '{printf "%s\t%i\t%i\n", $1, $2 - G/2, $3 + G/2}'  ${bed[1]}) \
-                       -wb | \
+                       -wb -wa | \
        tee >(awk -vOFS='\t' '{print $1, $2<$5?$2:$5, $6<$3?$3:$6, NR}' |
              bedtools intersect -bed -wb -abam ${bam[0]} -b - >> $temp) | \
            awk -vOFS='\t' '{print $1, $2<$5?$2:$5,  $6<$3?$3:$6, NR}' | \
