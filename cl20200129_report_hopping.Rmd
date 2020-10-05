@@ -11,7 +11,7 @@ attempted to systematically rearrange random parts of the genome including
 LAD-borders. This was previously done by iPCR, which was laborious and error-prone.
 Now Lise is giving this project another go using tagmentation.
 
-Another project that was recently started by Matthias involves random transposon
+Another project that was recently started by Mathias involves random transposon
 hopping in the hope of disrupting regulatory regions for genes of interest.
 
 To analyze the sequencing data from these experiments I designed a sequencing
@@ -31,7 +31,7 @@ tagmentation mapping using primers on the home sequence reaching into the genome
 For now I implemented the last input option for the home, the others should
 soon follow.
 
-In this first experiment Matthias added different concentrations of the
+In this first experiment Mathias added different concentrations of the
 transposon plasmid to optimize the local hopping.
 This was done in a clonal line with PB integrations containing a SB.
 He used 5ug, 1ug and a control without plasmid. What we expect to see is when
