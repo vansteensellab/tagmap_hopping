@@ -56,9 +56,10 @@ rev_seq = str(Seq.reverse_complement(fwd_seq))
 insertion_pd = pandas.read_csv(args.sites, sep='\t',
                                dtype='str')
 ## remove NA's and convert start gap and end gap to integers
-insertion_pd = insertion_pd.loc[insertion_pd['start_gap'] != '.']
-insertion_pd.start_gap = insertion_pd.start_gap.astype(int)
-insertion_pd.end_gap = insertion_pd.end_gap.astype(int)
+if 'start_gap' in insertion_pd.columns:
+    insertion_pd = insertion_pd.loc[insertion_pd['start_gap'] != '.']
+    insertion_pd.start_gap = insertion_pd.start_gap.astype(int)
+    insertion_pd.end_gap = insertion_pd.end_gap.astype(int)
 
 chain_pattern = ('chain {from_len} {seqname} {from_len} + 0 {from_len} '
                  '{seqname} {to_len} + 0 {to_len} {id}')

@@ -41,10 +41,12 @@ done
 shift $((OPTIND - 1))
 
 
+
 samtools sort -@ $threads -n $bam | \
     bamToBed -bedpe -i /dev/stdin | \
     awk -vOFS='\t' '{if ($2 > 0){print $1, ($2<$5)?$2:$5, ($3>$6)?$3:$6, $7, $8, $9}}' | \
     bedtools sort -i - > $bed
-echo $bed
+
+
 
 bedtools closest -d -a $bed -b <(bedtools sort -i $regions) > $overlap

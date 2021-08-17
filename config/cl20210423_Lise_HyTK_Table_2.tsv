@@ -1,0 +1,17 @@
+Sample_name	structure	mate	file	construct_type	Celltype	genome
+Fzd5_fwd	For_SB	R1	6387_36_Fzd5_-fwd_CGTACTAG-TAGATCGC_S21_R1_001.fastq.gz	SB	mESCs	mm10
+Fzd5_fwd	For_SB	R2	6387_36_Fzd5_-fwd_CGTACTAG-TAGATCGC_S21_R2_001.fastq.gz	SB	mESCs	mm10
+Fzd5_rev	Rev_SB	R1	6387_37_Fzd5_-_rev_AGGCAGAA-TAGATCGC_S31_R1_001.fastq.gz	SB	mESCs	mm10
+Fzd5_rev	Rev_SB	R2	6387_37_Fzd5_-_rev_AGGCAGAA-TAGATCGC_S31_R2_001.fastq.gz	SB	mESCs	mm10
+Tdgf1_fwd	For_SB	R1	6387_38_Tdgf1_-_fwd_TCCTGAGC-TAGATCGC_S25_R1_001.fastq.gz	SB	mESCs	mm10
+Tdgf1_fwd	For_SB	R2	6387_38_Tdgf1_-_fwd_TCCTGAGC-TAGATCGC_S25_R2_001.fastq.gz	SB	mESCs	mm10
+Tdgf1_rev	Rev_SB	R1	6387_39_Tdgf1_-_rev_GGACTCCT-TAGATCGC_S32_R1_001.fastq.gz	SB	mESCs	mm10
+Tdgf1_rev	Rev_SB	R2	6387_39_Tdgf1_-_rev_GGACTCCT-TAGATCGC_S32_R2_001.fastq.gz	SB	mESCs	mm10
+Nanog_fwd	For_SB	R1	6387_40_Nanog_-_fwd_TAGGCATG-TAGATCGC_S33_R1_001.fastq.gz	SB	mESCs	mm10
+Nanog_fwd	For_SB	R2	6387_40_Nanog_-_fwd_TAGGCATG-TAGATCGC_S33_R2_001.fastq.gz	SB	mESCs	mm10
+Nanog_rev	Rev_SB	R1	6387_41_Nanog_-_rev_CTCTCTAC-TAGATCGC_S34_R1_001.fastq.gz	SB	mESCs	mm10
+Nanog_rev	Rev_SB	R2	6387_41_Nanog_-_rev_CTCTCTAC-TAGATCGC_S34_R2_001.fastq.gz	SB	mESCs	mm10
+Cd9_fwd	For_SB	R1	6387_42_Cd9_-_fwd_CAGAGAGG-TAGATCGC_S35_R1_001.fastq.gz	SB	mESCs	mm10
+Cd9_fwd	For_SB	R2	6387_42_Cd9_-_fwd_CAGAGAGG-TAGATCGC_S35_R2_001.fastq.gz	SB	mESCs	mm10
+Cd9_rev	Rev_SB	R1	6387_43_Cd9_-_rev_GCTACGCT-TAGATCGC_S36_R1_001.fastq.gz	SB	mESCs	mm10
+Cd9_rev	Rev_SB	R2	6387_43_Cd9_-_rev_GCTACGCT-TAGATCGC_S36_R2_001.fastq.gz	SB	mESCs	mm10

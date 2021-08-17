@@ -1,0 +1,14 @@
+ID	forward	reverse	home_location	home_sequence	hybrid
+F123_C2_8	8_SB_fwd	26_SB_rev	-	-	CAST-129S
+F123_C2_9	9_SB_fwd	27_SB_rev	-	-	CAST-129S
+F123_C2_10	10_SB_fwd	28_SB_rev	-	-	CAST-129S
+F123_E5_HyTK	11_SB_fwd	29_SB_rev	-	-	CAST-129S
+F1_CBS_12	13_SB_fwd	31_SB_rev	-	-	CAST-129S
+F1_CBS_16	15_SB_fwd	33_SB_rev	-	-	CAST-129S
+Elu_nonSorted	1_SB_fwd	19_SB_rev	F1CBS_16	F1CBS_16	CAST-129S
+FT_nonSorted	2_SB_fwd	20_SB_rev	F1CBS_16	F1CBS_16	CAST-129S
+pME05_nonSorted	3_SB_fwd	21_SB_rev	F1CBS_16	F1CBS_16	CAST-129S
+Elu_pool_1	4_SB_fwd	22_SB_rev	F1CBS_16	F1CBS_16	CAST-129S
+Elu_pool_2	5_SB_fwd	23_SB_rev	F1CBS_16	F1CBS_16	CAST-129S
+FT_pool_1	6_SB_fwd	24_SB_rev	F1CBS_16	F1CBS_16	CAST-129S
+FT_pool_2	7_SB_fwd	25_SB_rev	F1CBS_16	F1CBS_16	CAST-129S

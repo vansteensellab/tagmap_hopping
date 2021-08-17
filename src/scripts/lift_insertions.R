@@ -51,7 +51,15 @@ if (grepl('.bam', argv$insert)){
                              'end_home', 'name_home', 'score_home', 'strand_home',
                              'dist'))
     dist = dist[,.SD[1,], by='name']
-    home = fread(argv$home, stringsAsFactors=F, key='name')
+
+    if (grepl('home/insertions/', argv$home)){
+        home = fread(argv$home, stringsAsFactors=F, key='name')
+    } else {
+        home = fread(argv$home, stringsAsFactors=F,
+                     col.names=c('seqnames', 'start_gap', 'end_gap', 'name', 'score',
+                                 'strand'), key='name')
+    }
+
     insert[,name_home:=dist[name, name_home]]
     insert[,c('start_home', 'end_home'):=home[name_home,c('start_gap','end_gap')]]
 }

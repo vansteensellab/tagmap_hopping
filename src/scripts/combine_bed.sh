@@ -59,13 +59,44 @@ then
     awk -vOFS='\t' '{print $0, NR}' $bed | \
         bedtools intersect -bed -wb -abam $bam -b - > $temp
 else
-    bedtools intersect -a <(awk -vG=$gap '{printf "%s\t%i\t%i\n", $1, $2 - G/2, $3 + G/2}'  ${bed[0]}) \
-                       -b <(awk -vG=$gap '{printf "%s\t%i\t%i\n", $1, $2 - G/2, $3 + G/2}'  ${bed[1]}) \
-                       -wb -wa | \
-       tee >(awk -vOFS='\t' '{print $1, $2<$5?$2:$5, $6<$3?$3:$6, NR}' |
-             bedtools intersect -bed -wb -abam ${bam[0]} -b - >> $temp) | \
-           awk -vOFS='\t' '{print $1, $2<$5?$2:$5,  $6<$3?$3:$6, NR}' | \
-           bedtools intersect -bed -wb -abam ${bam[1]} -b - >> $temp
+    cat <(bedtools intersect -a <(awk -vG=$gap '{printf "%s\t%i\t%i\n", $1, $2 - G/2, $3 + G/2}'  ${bed[0]}) \
+                             -b <(awk -vG=$gap '{printf "%s\t%i\t%i\n", $1, $2 - G/2, $3 + G/2}'  ${bed[1]}) \
+                             -wb -wa -loj) \
+        <(bedtools intersect -a <(awk -vG=$gap '{printf "%s\t%i\t%i\n", $1, $2 - G/2, $3 + G/2}'  ${bed[1]}) \
+                             -b <(awk -vG=$gap '{printf "%s\t%i\t%i\n", $1, $2 - G/2, $3 + G/2}'  ${bed[0]}) \
+                             -wb -wa -loj | awk -vOFS='\t' '{print $4, $5, $6, $1, $2, $3}') | \
+    tee >(awk -vOFS='\t' '{
+            if ($2==-1){
+                seq=$4
+                start=$5
+                end=$6
+            } else if ($5==-1){
+                seq=$1
+                start=$2
+                end=$3
+            } else {
+                seq=$1
+                start=$2<$5?$2:$5
+                end=$6<$3?$3:$6
+            }
+            print seq, start, end, NR}' | \
+        bedtools intersect -bed -wb -abam ${bam[0]} -b - >> $temp) | \
+        awk -vOFS='\t' '{
+                if ($2==-1){
+                    seq=$4
+                    start=$5
+                    end=$6
+                } else if ($5==-1){
+                    seq=$1
+                    start=$2
+                    end=$3
+                } else {
+                    seq=$1
+                    start=$2<$5?$2:$5
+                    end=$6<$3?$3:$6
+                }
+                print seq, start, end, NR}' | \
+        bedtools intersect -bed -wb -abam ${bam[1]} -b - >> $temp
 fi
 
 

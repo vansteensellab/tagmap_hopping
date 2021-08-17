@@ -1,0 +1,5 @@
+ID	Forward	Reverse	home_location	home_sequence	hybrid
+Fzd5	Fzd5_fwd	Fzd5_rev	Fzd5_location	Fzd5_seq	CAST-129S
+Tdgf1	Tdgf1_fwd	Tdgf1_rev	Tdgf1_location	Tdgf1_seq	CAST-129S
+Nanog	Nanog_fwd	Nanog_rev	Nanog_location	Nanog_seq	CAST-129S
+Cd9	Cd9_fwd	Cd9_rev	Cd9_location	Cd9_seq	CAST-129S
