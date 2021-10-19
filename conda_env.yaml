@@ -1,4 +1,4 @@
-name: tagmap_hop
+name: tagmap_hopping
 channels:
   - bioconda
   - r
@@ -22,7 +22,6 @@ dependencies:
   - pkgs/free/linux-64::pixman==0.34.0=0
   - pkgs/free/linux-64::readline==6.2=2
   - pkgs/free/linux-64::sqlite==3.13.0=0
-  - bioconda/linux-64::tbb==4.4_20150728=0
   - pkgs/free/linux-64::tk==8.5.18=0
   - pkgs/free/linux-64::xz==5.2.2=1
   - pkgs/free/linux-64::yaml==0.1.6=0
@@ -107,5 +106,4 @@ dependencies:
   - r/linux-64::r-reshape2==1.4.2=r3.3.2_0
   - bioconda/linux-64::r-scales==0.4.1=r3.3.2_1
   - bioconda/linux-64::r-ggplot2==2.2.1=r3.3.2_0
-prefix: /home/c.leemans/mydata/miniconda3/envs/tagmap_hop
-
+prefix: /DATA/usr/k.rademaker/miniconda3/envs/tagmap_hopping
