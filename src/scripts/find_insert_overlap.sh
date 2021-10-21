@@ -49,7 +49,8 @@ shift $((OPTIND - 1))
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 
-$DIR/insert_to_bed.awk -vL=$label -vS=$score $insert > $insert_bed
+$DIR/insert_to_bed.awk -vL=$label -vS=$score $insert | bedtools sort -i - > $insert_bed
+
 
 
 bedtools closest -d -a $insert_bed -b <(bedtools sort -i $regions) > $overlap

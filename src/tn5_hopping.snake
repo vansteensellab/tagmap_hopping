@@ -44,7 +44,7 @@ def get_all(config, input_df, pairing_df):
                 file_list = ['hopping/insertions_ref/%s.txt' % (pairing_row.id),
                              'hopping/sorted_ref/%s.bam' % (pairing_row.forward)]
             else:
-                file_list = ['home/sorted_bed/%s.bed' % pairing_row.forward]
+                file_list = ['home/insertions/%s.txt' % pairing_row.id]
 
         elif pairing_row.forward == '-':
             is_reverse = input_df['sample_name']==pairing_row.reverse
@@ -54,7 +54,7 @@ def get_all(config, input_df, pairing_df):
                 file_list = ['hopping/insertions_ref/%s.txt' % (pairing_row.id),
                              'hopping/sorted_ref/%s.bam' % (pairing_row.reverse)]
             else:
-                file_list = ['home/sorted_bed/%s.bed' % pairing_row.reverse]
+                file_list = ['home/insertions/%s.txt' % pairing_row.reverse]
 
         else:
             is_forward = input_df['sample_name']==pairing_row.forward
@@ -86,7 +86,6 @@ def get_all(config, input_df, pairing_df):
                     file_list = ['home/allelic_insertions/%s.txt' % (pairing_row.id)]
                 else:
                     file_list = ['home/insertions/%s.txt' % (pairing_row.id)]
-
         if all(genome == genome_list[0] for genome in genome_list):
             for file_name in file_list:
                 yield('%s/%s/%s' % (config['outdir'], genome_list[0],
@@ -292,7 +291,7 @@ def get_home_chain(pairing_df, wildcards, direction):
                                                        home_list[1],
                                                        direction))
 
-
+## Lifting between genomes
 rule lift_back_bam:
     input:
         bam='{outdir}/{genome}/hopping/sorted/{name}.bam',
@@ -574,7 +573,7 @@ def get_bw_pair(pairing_df, wildcards, pattern):
             yield(full_pat.format(name=name_list[i], **wildcards, i=i+1))
     else:
         full_pat = '.'.join((pattern, 'bw'))
-        print(full_pat.format(name=name_list[0], **wildcards))
+
         yield(full_pat.format(name=name_list[0], **wildcards))
 
 
@@ -611,8 +610,6 @@ rule allelic_intergrations:
 
 rule score_intergrations:
     input:
-        bw=lambda wildcards: get_bw_pair(pairing_df, wildcards,
-                                         '{outdir}/{genome}/{construct}/coverage/{pair}'),
         bam=lambda wildcards: get_file_pair(pairing_df, wildcards,
                                            '{outdir}/{genome}/{construct}/sorted/{name}.bam'),
         bed='{outdir}/{genome}/{construct}/combined/{pair}.txt',
@@ -628,8 +625,7 @@ rule score_intergrations:
                                                    'construct_type',
                                                    'insertion_site')
     shell:
-        '{path}/scripts/mepp_tags_v2.R --bw {input.bw}'
-        '                              --bam {input.bam}'
+        '{path}/scripts/mepp_tags_v2.R --bam {input.bam}'
         '                              --bed {input.bed}'
         '                              --fasta {input.fa}'
         '                              --out {output}'
@@ -783,8 +779,7 @@ def get_bowtie_index(config, pairing_df, wildcards):
         pair_list = this_pair.ix[:,'home_location':'home_sequence'].values[0]
         index = '%s/%s/home/insilico_index/%s-%s' % (wildcards.outdir, wildcards.genome,
                                                      pair_list[0], pair_list[1])
-    print(index)
-    print(wildcards)
+
     return(index)
 
 
@@ -813,9 +808,7 @@ rule map_reads:
 
 
 def get_raw_input(config, input_df, wildcards):
-    print(wildcards.name)
     this_input = input_df[input_df['sample_name']==wildcards.name]
-    print(this_input)
     mate1 = this_input[this_input['mate']=='R1']['file'].values[0]
     mate2 = this_input[this_input['mate']=='R2']['file'].values[0]
     if 'input_dir' in config:

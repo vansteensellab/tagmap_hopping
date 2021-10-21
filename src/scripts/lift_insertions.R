@@ -24,6 +24,11 @@ save(argv, file='test.Rdata')
 if (grepl('.bam', argv$insert)){
     insert = fread(cmd=paste('samtools view', argv$insert), header=F, sep='\t',
                    fill=T)
+    if (nrow(insert)==0){
+        system(paste("cp", argv$insert, argv$insert_out))
+        system(paste("cp", argv$insert, argv$insert_left))
+        quit()
+    }
     colnames(insert)[1:5] = c('name', 'flag', 'seqnames', 'start', 'mapq')
     coordinates = c('start')
 
@@ -41,8 +46,14 @@ if (grepl('.bam', argv$insert)){
     extra_line = list('@PG', 'ID:tagmap_hopping', 'PN:tagmap_hopping',
                       paste0('CL:', this_cmd), 'VN:0.1')
     new_header = rbind(header[,-c('seqnames', 'size')], extra_line)
+
 } else {
     insert = fread(argv$insert, stringsAsFactors=F)
+    if (nrow(insert)==0){
+        fwrite(insert, argv$insert_out, sep='\t')
+        fwrite(insert, argv$insert_left, sep='\t')
+        quit()
+    }
     insert_order = insert$name
     coordinates = c('start', 'end', 'start_gap', 'end_gap')
     dist = fread(argv$dist, stringsAsFactors=F, key='name',

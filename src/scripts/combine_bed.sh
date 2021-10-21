@@ -59,6 +59,8 @@ then
     awk -vOFS='\t' '{print $0, NR}' $bed | \
         bedtools intersect -bed -wb -abam $bam -b - > $temp
 else
+    # cat $bed | sort -k1,1 -k2,2n | bedtools merge -d $gap -i - > $temp
+
     cat <(bedtools intersect -a <(awk -vG=$gap '{printf "%s\t%i\t%i\n", $1, $2 - G/2, $3 + G/2}'  ${bed[0]}) \
                              -b <(awk -vG=$gap '{printf "%s\t%i\t%i\n", $1, $2 - G/2, $3 + G/2}'  ${bed[1]}) \
                              -wb -wa -loj) \
