@@ -625,7 +625,7 @@ rule score_intergrations:
                                                    'construct_type',
                                                    'insertion_site')
     shell:
-        '{path}/scripts/mepp_tags_v2.R --bam {input.bam}'
+        '{path}/scripts/mepp_tags_v3.R --bam {input.bam}'
         '                              --bed {input.bed}'
         '                              --fasta {input.fa}'
         '                              --out {output}'
@@ -642,46 +642,6 @@ def get_chrom_sizes(config, input_df, pairing_df, wildcards):
     outdir = '/'.join(wildcards.outdir.split('/')[:-2])
     return('{outdir}/ref_genome/{genome}.chrom.sizes'.format(outdir=outdir,
                                                              genome=genome))
-
-rule single_coverage:
-    input:
-        bed='{outdir}/combined/{pair}.txt',
-        bam=lambda wildcards: get_file_pair(pairing_df, wildcards,
-                                           '{outdir}/sorted/{name}.bam'),
-        cs=lambda wildcards: get_chrom_sizes(config, input_df, pairing_df,
-                                             wildcards)
-    output:
-        '{outdir}/coverage/{pair}.bw',
-    wildcard_constraints:
-        pair='[^.]+'
-    shell:
-        '{path}/scripts/coverage_to_bw.sh -a {input.bed}'
-        '                                 -b {input.bam}'
-        '                                 -c {input.cs}'
-        '                                 -m 2'
-        '                                 -o {output}'
-
-rule coverage:
-    input:
-        bed='{outdir}/combined/{pair}.txt',
-        bam=lambda wildcards: get_file_pair(pairing_df, wildcards,
-                                           '{outdir}/sorted/{name}.bam'),
-        cs=lambda wildcards: get_chrom_sizes(config, input_df, pairing_df,
-                                             wildcards)
-    output:
-        out1='{outdir}/coverage/{pair}.1.bw',
-        out2='{outdir}/coverage/{pair}.2.bw'
-    shell:
-        '{path}/scripts/coverage_to_bw.sh -a {input.bed}'
-        '                                 -b {input.bam[0]}'
-        '                                 -c {input.cs}'
-        '                                 -m 2'
-        '                                 -o {output.out1}; '
-        '{path}/scripts/coverage_to_bw.sh -a {input.bed}'
-        '                                 -b {input.bam[1]}'
-        '                                 -c {input.cs}'
-        '                                 -m 2'
-        '                                 -o {output.out2}'
 
 
 
@@ -741,10 +701,10 @@ rule bamtobed:
     threads:
         5
     shell:
-        "samtools sort -@ {threads} -n {input} |"
-        "    bedtools bamtobed -bedpe -i - |"
+        "sambamba view -f bam -F 'second_of_pair' {input} |"
+        "    bamToBed -i - |"
         "    awk -vOFS='\t' '{{"
-        "        print $1, $2<$5?$2:$5, $6<$3?$3:$6, $7, $8, $9"
+        "        print $1, $6==\"+\"?$2:$3-4, $6==\"+\"?$2+4:$3, $4, $5, $6"
         "    }}' |"
         "    sort -k1,1 -k2n |"
         "    bedtools merge -i - > {output}"

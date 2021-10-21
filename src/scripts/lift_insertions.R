@@ -105,7 +105,7 @@ join <- function(dt1, dt2){
 
 lift_dt = Reduce(join, lift_list)
 
-out = merge(lift_dt, insert[,-coordinates,with=F])[, colnames(insert), with=F]
+out = merge(lift_dt, insert[,-coordinates,with=F], all.y=T)[, colnames(insert), with=F]
 
 if (grepl('.bam', argv$insert)){
     sam_dt = rbind(new_header, out[order(seqnames, as.numeric(start))], fill=T)
@@ -116,8 +116,8 @@ if (grepl('.bam', argv$insert)){
 
     system2(command=c('samtools', 'index', argv$insert_out))
 } else {
-    out[is.na(start), start:=start_home]
-    out[is.na(end), end:=end_home]
+    out[is.na(start), start:=round((end_home + start_home)/2)-1]
+    out[is.na(end), end:=round((end_home + start_home)/2)]
     fwrite(out[insert_order, -c('name_home', 'start_home', 'end_home')],
            file=argv$insert_out, sep='\t', quote=F, na='.')
 }

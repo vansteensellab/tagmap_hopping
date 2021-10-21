@@ -52,6 +52,7 @@ done
 shift $((OPTIND - 1))
 
 
+
 touch $temp
 
 if [ "${bam[1]}" == '' ]
@@ -59,46 +60,48 @@ then
     awk -vOFS='\t' '{print $0, NR}' $bed | \
         bedtools intersect -bed -wb -abam $bam -b - > $temp
 else
-    # cat $bed | sort -k1,1 -k2,2n | bedtools merge -d $gap -i - > $temp
-
-    cat <(bedtools intersect -a <(awk -vG=$gap '{printf "%s\t%i\t%i\n", $1, $2 - G/2, $3 + G/2}'  ${bed[0]}) \
-                             -b <(awk -vG=$gap '{printf "%s\t%i\t%i\n", $1, $2 - G/2, $3 + G/2}'  ${bed[1]}) \
-                             -wb -wa -loj) \
-        <(bedtools intersect -a <(awk -vG=$gap '{printf "%s\t%i\t%i\n", $1, $2 - G/2, $3 + G/2}'  ${bed[1]}) \
-                             -b <(awk -vG=$gap '{printf "%s\t%i\t%i\n", $1, $2 - G/2, $3 + G/2}'  ${bed[0]}) \
-                             -wb -wa -loj | awk -vOFS='\t' '{print $4, $5, $6, $1, $2, $3}') | \
-    tee >(awk -vOFS='\t' '{
-            if ($2==-1){
-                seq=$4
-                start=$5
-                end=$6
-            } else if ($5==-1){
-                seq=$1
-                start=$2
-                end=$3
-            } else {
-                seq=$1
-                start=$2<$5?$2:$5
-                end=$6<$3?$3:$6
-            }
-            print seq, start, end, NR}' | \
-        bedtools intersect -bed -wb -abam ${bam[0]} -b - >> $temp) | \
-        awk -vOFS='\t' '{
-                if ($2==-1){
-                    seq=$4
-                    start=$5
-                    end=$6
-                } else if ($5==-1){
-                    seq=$1
-                    start=$2
-                    end=$3
-                } else {
-                    seq=$1
-                    start=$2<$5?$2:$5
-                    end=$6<$3?$3:$6
-                }
-                print seq, start, end, NR}' | \
-        bedtools intersect -bed -wb -abam ${bam[1]} -b - >> $temp
+    cat ${bed[0]} ${bed[1]} | sort -k1,1 -k2,2n | bedtools merge -d $gap -i - |
+        tee >(bedtools intersect -bed -wb -abam ${bam[0]} -b - >> $temp) | \
+              bedtools intersect -bed -wb -abam ${bam[1]} -b - >> $temp
+    #
+    # cat <(bedtools intersect -a <(awk -vG=$gap '{printf "%s\t%i\t%i\n", $1, $2 - G/2, $3 + G/2}'  ${bed[0]}) \
+    #                          -b <(awk -vG=$gap '{printf "%s\t%i\t%i\n", $1, $2 - G/2, $3 + G/2}'  ${bed[1]}) \
+    #                          -wb -wa -loj) \
+    #     <(bedtools intersect -a <(awk -vG=$gap '{printf "%s\t%i\t%i\n", $1, $2 - G/2, $3 + G/2}'  ${bed[1]}) \
+    #                          -b <(awk -vG=$gap '{printf "%s\t%i\t%i\n", $1, $2 - G/2, $3 + G/2}'  ${bed[0]}) \
+    #                          -wb -wa -loj | awk -vOFS='\t' '{print $4, $5, $6, $1, $2, $3}') | \
+    # tee >(awk -vOFS='\t' '{
+    #         if ($2==-1){
+    #             seq=$4
+    #             start=$5
+    #             end=$6
+    #         } else if ($5==-1){
+    #             seq=$1
+    #             start=$2
+    #             end=$3
+    #         } else {
+    #             seq=$1
+    #             start=$2<$5?$2:$5
+    #             end=$6<$3?$3:$6
+    #         }
+    #         print seq, start, end, NR}' | \
+    #     bedtools intersect -bed -wb -abam ${bam[0]} -b - >> $temp) | \
+    #     awk -vOFS='\t' '{
+    #             if ($2==-1){
+    #                 seq=$4
+    #                 start=$5
+    #                 end=$6
+    #             } else if ($5==-1){
+    #                 seq=$1
+    #                 start=$2
+    #                 end=$3
+    #             } else {
+    #                 seq=$1
+    #                 start=$2<$5?$2:$5
+    #                 end=$6<$3?$3:$6
+    #             }
+    #             print seq, start, end, NR}' | \
+    #     bedtools intersect -bed -wb -abam ${bam[1]} -b - >> $temp
 fi
 
 
@@ -106,22 +109,22 @@ touch $cut
 
 
 awk -F '\t' -vOFS='\t' -vD=$depth -vM=$mapq -vC=$cut '{
-       if (!($16 in pos)){
-           pos[$16] = $13"\t"$14"\t"$15;
-           mapq[$16] = $5
-           count[$16] = 1
-       } else if ($5>mapq[$16]){
-           mapq[$16] = $5
-           count[$16] += 1
+       pos = $13"\t"$14"\t"$15;
+       if (!(pos in mapq)){
+           mapq[pos] = $5
+           count[pos] = 1
+       } else if ($5>mapq[pos]){
+           mapq[pos] = $5
+           count[pos] += 1
        } else {
-           count[$16] += 1
+           count[pos] += 1
        }
     }END{
-        for (p in pos){
-            if (mapq[p] >= M && count[p] >= D){
-                print pos[p], mapq[p]
+        for (pos in mapq){
+            if (mapq[pos] >= M && count[pos] >= D){
+                print pos, mapq[pos]
             }  else{
-                print pos[p], mapq[p] >> C
+                print pos, mapq[pos] >> C
             }
         }}' $temp > $out
 
