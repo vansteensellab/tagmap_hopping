@@ -8,10 +8,6 @@ library(metap)
 
 parser <- ArgumentParser(description='Process counts from two sides of tagmentation and score putative intergrations')
 
-parser$add_argument('--bw', nargs="*",
-                    help=paste('one or two bigWig files from both sides of',
-                               'putative integrations counting the mate from',
-                               'the integration only'))
 parser$add_argument('--bed', help='bed file with putative intergrations')
 parser$add_argument('--bam', nargs="*", help='sorted bam files with mapping for both sides')
 parser$add_argument('--overhang', help='expected overhang of the intergration (e.g. TTAA, TA)')
@@ -75,7 +71,7 @@ if (!length(argv$bam) %in% c(1,2)){
 
 
 write_empty <- function(argv){
-    if (length(argv$bw) == 2){
+    if (length(argv$bam) == 2){
         cat(paste("seqnames", "start", "end", "start_gap", "end_gap",
                   "center_sequence", "count_1", "D_1", "mapq_1", "p_1",
                   "concordance.x", "count_2", "D_2", "mapq_2", "p_2",
@@ -114,12 +110,15 @@ if (length(bed_gr)==0){
 
 
 
-    if (length(argv$bw) == 2){
+    if (length(argv$bam) == 2){
         pair_list = lapply(1:2, function(i){
             bam = argv$bam[i]
             cmd = paste('bedtools intersect -wa -wb -a', argv$bed, '-b', bam)
             overlap = system(cmd,intern=T)
             overlap_dt = as.data.table(do.call(rbind, str_split(overlap, '\t')))
+            if (nrow(overlap_dt) == 0){
+                return(NULL)
+            }
             names(overlap_dt) = c('seqnames_region', 'start_region', 'end_region', 'mapq_region',
                                   'seqnames_read', 'start_read',
                                   'end_read', 'read_id', 'mapq', 'strand')
@@ -153,11 +152,20 @@ if (length(bed_gr)==0){
 
         overlap_list = lapply(1:2, function(i){
             pair_count = pair_list[[i]]
-            call_dt = pair_count[,concordance_side(.SD, gap_call[reg==region,]) , by='region']
+            if(is.null(pair_count)){
+                overlap_count = data.table(strand=character(),
+                                         region=integer(),
+                                         side=integer(),
+                                         is_concordant=logical(),
+                                         count=numeric(),
+                                         mapq=numeric())
+            } else {
+                call_dt = pair_count[,concordance_side(.SD, gap_call[reg==region,]) , by='region']
 
 
-            overlap_count = call_dt[,list(count=nrow(.SD), mapq=sum(as.numeric(mapq))),
-                                        by=c('strand', 'region', 'side', 'is_concordant')]
+                overlap_count = call_dt[,list(count=nrow(.SD), mapq=sum(as.numeric(mapq))),
+                                            by=c('strand', 'region', 'side', 'is_concordant')]
+            }
             overlap_merge = merge(region_dt, overlap_count, all=T,
                                   by=c('region', 'side', 'strand', 'is_concordant'))
             overlap_merge[is.na(overlap_merge)] <- 0
@@ -169,7 +177,7 @@ if (length(bed_gr)==0){
                                                                      sum(count))$p.value,
                                                    1)),
                                     by=c('region', 'is_concordant')]
-            concordance = balance[,list(count=count[is_concordant],
+            concordance = balance[,list(count=sum(count),
                                         D=D[is_concordant],
                                         mapq=mapq[is_concordant],
                                         p=p[is_concordant],
@@ -187,7 +195,7 @@ if (length(bed_gr)==0){
                            overlap_list[[2]], by=c('region'),
                            all=T)
 
-        overlap_dt[, sump:=metap::sump(c(p_1, p_2))$p, by='region']
+        overlap_dt[, sump:=sump(c(p_1, p_2)), by='region']
         overlap_dt[, p_adj:=p.adjust(sump)]
         overlap_dt[, strand:=ifelse(D_1==1, '+', '-')]
         overlap_dt[is.na(D_1), strand:=ifelse(D_2==1, '-', '+')]
@@ -195,60 +203,88 @@ if (length(bed_gr)==0){
         full_result = merge(bed_dt[,-c('strand', 'width')],
                             overlap_merge, by.x='region', by.y='reg')
 
-    } else if (length(argv$bw) == 1){
-        r1 = import.bw(argv$bw[1])
+    } else if (length(argv$bam) == 1){
+        bam = argv$bam[1]
+        cmd = paste('bedtools intersect -wa -wb -a', argv$bed, '-b', bam)
+        overlap = system(cmd,intern=T)
+        overlap_dt = as.data.table(do.call(rbind, str_split(overlap, '\t')))
+        names(overlap_dt) = c('seqnames_region', 'start_region', 'end_region', 'mapq_region',
+                              'seqnames_read', 'start_read',
+                              'end_read', 'read_id', 'mapq', 'strand')
+        overlap_dt[,start_region:=as.numeric(start_region)+1]
+        overlap_dt[,end_region:=as.numeric(end_region)]
+        overlap_dt[,mate:=ifelse(grepl('/1', read_id), 1, 2)]
+        overlap_dt[,pair_id:= gsub('/[12]', '', read_id)]
+        overlap_dt[,adj_strand:= ifelse(mate==1, strand,
+                                        ifelse(strand=='+', '-', '+'))]
 
-        o = findOverlaps(bed_gr, r1)
+        pair_count = overlap_dt[, list(start_pair=min(as.numeric(start_read)),
+                                       end_pair=max(as.numeric(end_read)),
+                                       mapq=max(mapq), strand_pair=adj_strand[1]),
+                                by=c('seqnames_region', 'start_region', 'end_region',
+                                     'pair_id')]
 
-        score_dt = data.table(r1=r1[subjectHits(o)]$score,
-                              region=queryHits(o),
-                              seqname=as.character(seqnames(r1[subjectHits(o)])),
-                              start=start(r1[subjectHits(o)]))
-        region_dt = as.data.table(bed_gr)
-        region_dt[,region:=1:nrow(region_dt)]
-        lines = region_dt[,paste(seqnames, start, end, region, sep='\t')]
-        cmd = paste('bedtools intersect -F 0.5 -wa -wb -a /dev/stdin -b', argv$bam)
-        overlap = system(cmd, input = lines,intern=T)
+        pair_count[,start_gap:=ifelse(strand_pair=='+', end_pair - overhang_len,
+                                      start_pair)]
+        pair_count[,end_gap:=ifelse(strand_pair=='+', end_pair,
+                                    start_pair + overhang_len)]
 
-        overlap_dt = data.table(t(as.data.frame(str_split(overlap, '[\t/]'))))
-        colnames(overlap_dt) = c('seqnames', 'start', 'end', 'region',
-                                 'seqnames_r', 'start_r', 'end_r', 'read_id',
-                                 'mate', 'mapq', 'strand')
+        pair_merge = merge(bed_dt, pair_count, by.x=c('seqnames', 'start', 'end'),
+                           by.y=c('seqnames_region', 'start_region', 'end_region'))
 
-        center_dt = overlap_dt[mate==argv$mate,
-                               find_single_center(.SD, start, end, overhang_len),
-                               by=c('seqnames', 'start', 'end', 'region')]
-        if (nrow(center_dt) == 0){
-            write_empty(argv)
-        } else {
-            lines = center_dt[,paste(seqnames, start_gap, end_gap, region,
-                                sep='\t', collapse='\n')]
+        gap_call = pair_merge[,call_gap(.SD), by='region']
+        colnames(gap_call)[1] = 'reg'
+        setkey(gap_call, 'reg')
 
-            cmd = paste('bedtools getfasta -tab -fi', argv$fasta, '-bed /dev/stdin')
 
-            getfasta = system(cmd, input=lines, intern=T)
+        call_dt = pair_merge[,concordance_side(.SD, gap_call[reg==region,]) , by='region']
 
-            seq_dt = data.table(str_match(getfasta, '(.*):(.*)-(.*)\t(.*)'))
-            names(seq_dt) = c('string', 'seqnames', 'start_gap', 'end_gap', 'center_sequence')
 
-            seq_dt[,c('start_gap', 'end_gap'):=list(as.numeric(start_gap),
-                                               as.numeric(end_gap))]
-            seq_dt[,center_sequence:=toupper(center_sequence)]
+        overlap_count = call_dt[,list(count=nrow(.SD), mapq=sum(as.numeric(mapq))),
+                                    by=c('strand', 'region', 'side', 'is_concordant')]
+        overlap_merge = merge(region_dt, overlap_count, all=T,
+                              by=c('region', 'side', 'strand', 'is_concordant'))
+        overlap_merge[is.na(overlap_merge)] <- 0
+        balance = overlap_merge[,list(count=sum(count),
+                                      mapq=sum(mapq)/sum(count),
+                                      D=(count[side==1]/sum(count)-.5) * 2,
+                                      p=ifelse(sum(count)>0,
+                                               stats::binom.test(count[side==1],
+                                                                 sum(count))$p.value,
+                                               1)),
+                                by=c('region', 'is_concordant')]
+        concordance = balance[,list(count=sum(count),
+                                    D=D[is_concordant],
+                                    mapq=mapq[is_concordant],
+                                    p=p[is_concordant],
+                                    concordance=count[is_concordant] /
+                                                sum(count)),
+                              by=c('region')]
 
-            center_merge = merge(center_dt, seq_dt[,-c('string')],
-                by=c('seqnames', 'start_gap', 'end_gap'))
-            full_result = center_merge[,c('seqnames', 'start', 'end', 'start_gap',
-                                          'end_gap', 'center_sequence', 'concordance',
-                                          'strand', 'region')]
-        }
+        concordance[, p_adj:=p.adjust(p)]
+        concordance[, strand:=ifelse(D==1, '+', '-')]
+        overlap_merge = merge(gap_call, concordance, by.x='reg', by.y='region')
+        full_result = merge(bed_dt[,-c('strand', 'width')],
+                            overlap_merge, by.x='region', by.y='reg')
+
     } else {
-        stop('only 1 or 2 bigwigs allowed')
+        stop('only 1 or 2 bam files allowed')
     }
 
-    if (!(length(argv$bw) == 1 && nrow(center_dt) == 0)){
-        full_result[, name:=paste0('insert_', .I)]
+    full_result[, name:=paste0('insert_', .I)]
 
-        fwrite(full_result[,-c('region')], argv$out, sep='\t', na='.', quote=F)
+    lines = full_result[,paste(seqnames, start_gap, end_gap, name,
+                               sep='\t', collapse='\n')]
 
-    }
+    cmd = paste('bedtools getfasta -name -tab -fi', argv$fasta, '-bed /dev/stdin')
+
+    getfasta = system(cmd, input=lines, intern=T)
+
+    seq_dt = data.table(str_match(getfasta, '(.*)::(.*):(.*)-(.*)\t(.*)'))
+    names(seq_dt) = c('string', 'insert', 'seqnames', 'start_gap', 'end_gap',
+                      'center_seq')
+    setkey(seq_dt, 'insert')
+    full_result[,center_sequence:=toupper(seq_dt[name,center_seq])]
+
+    fwrite(full_result[,-c('region')], argv$out, sep='\t', na='.', quote=F)
 }
