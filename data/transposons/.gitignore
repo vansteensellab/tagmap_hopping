@@ -1,0 +1,4 @@
+# Directory intented to store transposon constructs FASTA files. 
+*
+# Ignore all files, except for this file
+!.gitignore

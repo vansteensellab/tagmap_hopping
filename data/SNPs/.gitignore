@@ -1,0 +1,4 @@
+# Directory intented to store VCF files for CAST/129S mESC cell line SNPs.
+*
+# Ignore all files, except for this file
+!.gitignore

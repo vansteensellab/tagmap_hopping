@@ -1,0 +1,4 @@
+# Directory intented to store Bowtie2-indexed hg38 .bt2 files. 
+*
+# Ignore all files, except for this file
+!.gitignore

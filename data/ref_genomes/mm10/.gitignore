@@ -1,0 +1,4 @@
+# Directory intented to store mm10 reference genome FASTA and chrom.sizes files. 
+*
+# Ignore all files, except for this file
+!.gitignore

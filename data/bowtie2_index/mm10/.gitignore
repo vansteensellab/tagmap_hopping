@@ -1,0 +1,4 @@
+# Directory intented to store Bowtie2-indexed mm10 .bt2 files. 
+*
+# Ignore all files, except for this file
+!.gitignore
