@@ -107,3 +107,4 @@ dependencies:
   - bioconda/linux-64::r-scales==0.4.1=r3.3.2_1
   - bioconda/linux-64::r-ggplot2==2.2.1=r3.3.2_0
 prefix: /DATA/usr/k.rademaker/miniconda3/envs/tagmap_hopping
+# conda install -c conda-forge r-base=3.6.0
