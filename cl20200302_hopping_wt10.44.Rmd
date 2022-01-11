@@ -1,0 +1,264 @@
+# knitr document van Steensel lab
+
+# Can we detect hopping by tagmentation?
+## Christ Leemans, 03-02-2020
+
+## Introduction.
+Local hopping of transposons can be used to introduce random disruptions of
+in the vicinity of a region of interest. Using cre-recombinase Omar previously
+attempted to systematically rearrange random parts of the genome including
+LAD-borders. This was previously done by iPCR, which was laborious and error-prone.
+Now Lise is giving this project another go using tagmentation.
+
+Another project that was recently started by Mathias involves random transposon
+hopping in the hope of disrupting regulatory regions for genes of interest.
+
+To analyze the sequencing data from these experiments I designed a sequencing
+pipeline. In both these experiments there is a carrier sequence integrated which
+contains the sleeping beauty (SB). This carrier sequence I termed "home".
+
+This carrier can be another transposon (e.g. piggybac) or it could be integrated
+using a CRISPR construct. The piggibac (PB) is random, but it is very predictable
+which sequence gets build in. For CRISPR at least one site is predictable and
+tested by PCRs around that site. But there can be ends of the construct that get
+lost or ends of the genome that get resected and lost.
+
+The pipeline should be able to take the location of this home from a tab
+delimited file, sanger sequences around the intergration or from another
+tagmentation mapping using primers on the home sequence reaching into the genome.
+
+For now I implemented the last input option for the home, the others should
+soon follow.
+
+Currently Mathias is optimizing the hopping. But before these new experiments
+come in, we can already start playing with a cell-line in which Omar previously
+induced hopping.
+
+The first thing I would like to know is if we can assess the efficiency of the
+hopping. For this we need to look at the number of reads outside of the original
+integration compared to the number of reads mapped to original integrations.
+
+The second question is whether this putative hopping is local, so if we take the
+hopped site and compare them to randomly drawn sites in the genome, do we end up
+closer to original integrations?
+
+The third question is whether hopping occurs from all integration, or if there
+is a bias in the number of hopping events for specific chromatin types.
+
+
+
+## libraries and data
+
+```{r}
+
+library(rtracklayer)
+library(data.table)
+library(ggplot2)
+
+result_dir = paste0('/DATA/usr/c.leemans/projects/tagmap_hopping/',
+                    'results/cl20200227_lise_hopped/mm10/')
+
+
+pb_score_dt = fread(paste0(result_dir, 'home/insertions/wt10.txt'))
+pb_gr = import.bed(paste0(result_dir, 'home/regions/',
+                          'wt10-pJOYC037.ref.txt'))
+
+
+
+ta_dt = fread(paste0('/DATA/usr/l.dauban/projects/TagMap/',
+                     'premadeReferences/BSgenome.Mmusculus.UCSC.',
+                     'mm10_PiggyBac_tagMeppRindex.tis'),
+              col.names=c('seqnames', 'start', 'end', 'name', 'score', 'strand'))
+
+## exclude all alternative contigs etc.
+ta_dt = ta_dt[grep('chr[^_]*$', seqnames), ]
+
+
+
+sb_insertions = fread(paste0(result_dir, 'hopping/insertions/wt10.44.txt'))
+
+
+sb_reads_fw = fread(paste0(result_dir,
+                           'hopping/overlap/mESCs_wt10.44_Fw_SB.txt'),
+                    col.names=c('seqnames', 'start', 'end', 'read_id', 'mapq',
+                                'strand', 'seqnames_pb', 'start_pb', 'end_pb',
+                                'name', 'p_adj', 'strand', 'dist'))
+sb_reads_rv = fread(paste0(result_dir,
+                           'hopping/overlap/mESCs_wt10.44_Rv_SB.txt'),
+                    col.names=c('seqnames', 'start', 'end', 'read_id', 'mapq',
+                                'strand', 'seqnames_pb', 'start_pb', 'end_pb',
+                                'name', 'p_adj', 'strand', 'dist'))
+
+sb_reads_fw[, insertion:='SB_Forward']
+sb_reads_rv[, insertion:='SB_Reverse']
+
+
+pb_insilico = import.gff3(paste0(result_dir,
+                                 'home/insilico_genome/wt10-pJOYC037.gff3'))
+
+
+
+```
+
+
+
+## How much putative hopping is there?
+
+```{r}
+## first sanity check, do we map to TA sites?
+sb_insertions[,table(center_sequence)]
+
+## if we filter on p-value, do we still see other integration outside TA?
+sb_insertions[p_adj<0.05, table(center_sequence)]
+
+
+
+o = findOverlaps(makeGRangesFromDataFrame(sb_insertions), pb_insilico)
+
+sb_insertions[,overlap:=F]
+sb_insertions[queryHits(o),overlap:=T]
+
+
+## how many new insertions do we have and do they overlap with a piggybac?
+sb_insertions[,table(overlap)]
+
+
+## and how about insertions with p < 0.05?
+sb_insertions[p_adj < 0.05,table(overlap)]
+
+
+
+write.table(sb_insertions[p_adj < 0.05 & overlap==F,])
+```
+**conclusion:**
+If we filter on p < 0.05, there are only integrations in TA sites.
+There are 39 high confidence integrations outside of PB insertions.
+
+
+
+## is the hopping local?
+
+first let's look at the 39 high confidence sites.
+
+```{r}
+random_ta = ta_dt[sample(1:nrow(ta_dt), 10000),]
+random_gr = makeGRangesFromDataFrame(random_ta)
+
+random_dist = distanceToNearest(random_gr, pb_gr)
+
+
+sb_outside = sb_insertions[p_adj < 0.05 & overlap==F,]
+sb_dist = distanceToNearest(makeGRangesFromDataFrame(sb_outside), pb_insilico)
+
+sb_outside[,distance:=mcols(sb_dist)$distance]
+
+dist_data = rbind(data.table(insertion='SleepingBeauty',
+                             dist=mcols(sb_dist)$distance),
+                  data.table(insertion='Random',
+                             dist=mcols(random_dist)$distance))
+
+
+pdf('cl20200303_density_insertions_sb_p_cutoff.pdf', useDingbats=F)
+ggplot(dist_data, aes(x=dist, color=insertion)) +
+    geom_density(adjust=1/2) +
+    theme_bw()
+
+ggplot(dist_data, aes(x=log10(dist), color=insertion)) +
+    geom_density(adjust=1/2) +
+    theme_bw()
+
+dev.off()
+
+
+table(mcols(sb_dist)$distance<1*10^6)/length(sb_dist)
+```
+**conclusion:**
+There seems to be a slight preference for proximal insertions (35% < 1MB).
+This is closer that compared to random draws
+Maybe the conclusion is different if we look at reads that are not linked to
+a PB insertion in general
+
+
+```{r}
+dist_data = rbind(sb_reads_fw[dist>0, c('insertion', 'dist')],
+                  sb_reads_rv[dist>0, c('insertion', 'dist')],
+                  data.table(insertion='Random',
+                             dist=mcols(random_dist)$distance))
+
+
+## fist the ratio of reads mapped to PB vs not to PB
+sb_reads_fw[,table(dist>0)/length(dist)]
+sb_reads_rv[,table(dist>0)/length(dist)]
+
+
+pdf('cl20200303_density_insertions_reads.pdf', useDingbats=F)
+ggplot(dist_data, aes(x=dist, color=insertion)) +
+    geom_density(adjust=1/2) +
+    theme_bw()
+
+ggplot(dist_data, aes(x=log10(dist), color=insertion)) +
+    geom_density(adjust=1/2) +
+    theme_bw()
+
+dev.off()
+
+
+
+## now let's compare <1MB reads not overlapping with PB to >1MB
+sb_reads_fw[dist>0,table(dist<1000000)/length(dist)]
+sb_reads_rv[dist>0,table(dist<1000000)/length(dist)]
+
+
+```
+
+**conclusion:**
+looking at reads instead of called integrations, there is an even higher enrichment
+for proximal sites.
+
+
+## are specific sites hopped?
+
+```{r}
+
+lad_gr = import.bed(paste0('/DATA/usr/t.v.schaik/proj/tests/results/',
+                           'ts180302_F1-mESC_Laura/results_ts190218_newparsing/',
+                           'HMM/bin-10kb/',
+                           'mESC_F121-9_LaminB_CAS-10kb-combined_AD.bed.gz'))
+
+
+o = findOverlaps(pb_gr, lad_gr)
+
+pb_gr$LAD='iLAD'
+
+pb_gr[queryHits(o)]='LAD'
+
+sb_outside[,closest:=paste0('insert_',
+                            as.numeric(pb_insilico[subjectHits(sb_dist)]$ID) + 1)]
+
+pb_match = match(sb_outside$closest, pb_gr$name)
+sb_outside[,LAD_PB:=pb_gr[pb_match]$LAD]
+
+
+table(pb_gr[pb_gr$score<0.05]$LAD)
+
+
+sb_outside[,table(LAD_PB)]
+
+sb_outside[,table(closest)]
+```
+
+**conclusion:**
+There seems to be slightly more hopping in LADs if you look at the putative
+origin of the events. Maybe we can formalize it by a Fisher's test.
+For this we need to look per PB site, if the SB has hopped out
+
+
+```{r}
+pb_gr$hopped=F
+pb_gr[queryHits(sb_dist)]$hopped=T
+
+pb_dt = as.data.table(pb_gr[pb_gr$score<0.05])
+
+pb_dt[, table(hopped)/length(hopped), by='LAD']
+
+```

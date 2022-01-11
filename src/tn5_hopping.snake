@@ -79,6 +79,8 @@ def get_all(config, input_df, pairing_df):
                     file_list = ['hopping/insertions_ref/%s.txt' % (pairing_row.id),
                                  'hopping/sorted_ref/%s.bam' % (pairing_row.forward),
                                  'hopping/sorted_ref/%s.bam' % (pairing_row.reverse)]
+                if 'hybrid' in pairing_df.columns and pairing_row.hybrid != '-':
+                    file_list = file_list + ['home/allelic_insertions/%s.txt' % (pairing_row.id)]
             else:
                 genome_list = input_fwd.genome.tolist() + input_rev.genome.tolist()
 

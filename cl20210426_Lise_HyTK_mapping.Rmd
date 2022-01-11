@@ -1,0 +1,86 @@
+Lise has a SB inside a PB which she integrated using targeted integration by CRISPR-Cas9.
+This should be a single location. Using tagmentation mapping she hoped to double check that.
+
+The read structure is a bit challenging though since they start from the SB.
+If there is an integration in a different place in the genome, the reads starting
+from the SB won't be informative since they will read into the PB first.
+
+Hopefully there are enough long read fragments that the read starting from the Tn5
+does align to the genome and is nog still inside the PB.
+
+To check this I created an in silico genome with the integration at the target site
+which we know is there because it was confirmed using PCR. If we map our Tn5 sided
+reads to this in silico version, we should see these reads aligning to this sequence.
+Concentrated around the site of the SB, but at different distances.
+Hopefully there will be enough reads distant enough to reach the genome. If there
+are enough of these reads we should also be able to pick up other intergrations.
+
+```bash
+for f in $(ls results/cl20210427_lise_HyTK/mm10/parsed/*.1.fastq.gz)
+do
+    base=$(basename $f)
+    clone=${base%_*}
+    index=$clone"_location-"$clone"_seq"
+    bam=${f/.1.fastq.gz/.bam}
+    bowtie2 -x results/cl20210427_lise_HyTK/mm10/home/insilico_index/$index \
+        -p30 -U $f | samtools sort - > ${bam/parsed/se_mapped}
+
+    samtools index -@ 5 ${bam/parsed/se_mapped}
+
+done
+
+
+for fwd in $(ls results/cl20210427_lise_HyTK/mm10/se_mapped/*_fwd.bam)
+do
+    rev=${fwd/fwd/rev}
+    fwd_bed=${fwd/bam/bed}
+    rev_bed=${rev/bam/bed}
+    for f in $(echo $fwd $rev)
+    do
+        bamToBed -i $f | bedtools merge -i - | \
+            awk -vOFS='\t' '{print $1, $2, $3, ".", $3-$2, "."}' |
+            bedtools sort -i - > ${f/bam/bed}
+    done
+    bedtools closest -d -wa -wb -a $fwd_bed -b $rev_bed > ${fwd_bed/fwd/fwd_rev}
+    bedtools closest -d -wa -wb -b $fwd_bed -a $rev_bed | \
+        awk -vOFS='\t' '{print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6, $13}' \
+        > ${fwd_bed/fwd/rev_fwd}
+
+    cat ${fwd_bed/fwd/fwd_rev} ${fwd_bed/fwd/rev_fwd} | sort -k1,1 -k1,2n | \
+        uniq > ${fwd_bed/_fwd.bed/.txt}
+    rm ${fwd_bed/fwd/fwd_rev} ${fwd_bed/fwd/rev_fwd}
+done
+
+for fwd in $(ls results/cl20210427_lise_HyTK/mm10/se_mapped/*_fwd.bam)
+do
+    rev=${fwd/fwd/rev}
+    sambamba markdup -r $fwd ${fwd/.bam/_demulti.bam}
+    sambamba markdup -r $rev ${rev/.bam/_demulti.bam}
+    samtools index -@ 5 ${fwd/.bam/_demulti.bam}
+    samtools index -@ 5 ${rev/.bam/_demulti.bam}
+done
+
+
+
+for fwd in $(ls results/cl20210427_lise_HyTK/mm10/se_mapped/*_fwd_demulti.bam)
+do
+    rev=${fwd/fwd/rev}
+    fwd_bed=${fwd/bam/bed}
+    rev_bed=${rev/bam/bed}
+    for f in $(echo $fwd $rev)
+    do
+        bamToBed -i $f | bedtools merge -i - | \
+            awk -vOFS='\t' '{print $1, $2, $3, ".", $3-$2, "."}' |
+            bedtools sort -i - > ${f/bam/bed}
+    done
+    bedtools closest -d -wa -wb -a $fwd_bed -b $rev_bed > ${fwd_bed/fwd/fwd_rev}
+    bedtools closest -d -wa -wb -b $fwd_bed -a $rev_bed | \
+        awk -vOFS='\t' '{print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6, $13}' \
+        > ${fwd_bed/fwd/rev_fwd}
+
+    cat ${fwd_bed/fwd/fwd_rev} ${fwd_bed/fwd/rev_fwd} | sort -k1,1 -k1,2n | \
+        uniq > ${fwd_bed/_fwd.bed/.txt}
+    rm ${fwd_bed/fwd/fwd_rev} ${fwd_bed/fwd/rev_fwd}
+done
+
+```

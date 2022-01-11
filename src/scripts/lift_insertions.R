@@ -30,6 +30,8 @@ if (grepl('.bam', argv$insert)){
         quit()
     }
     colnames(insert)[1:5] = c('name', 'flag', 'seqnames', 'start', 'mapq')
+    ## trick to seperate mates: flag must be different, but name is the same
+    insert[,name:=paste(name, flag, sep='_')]
     coordinates = c('start')
 
     header = fread(cmd=paste('samtools view -H', argv$insert), header=F, sep='\t',
@@ -108,6 +110,8 @@ lift_dt = Reduce(join, lift_list)
 out = merge(lift_dt, insert[,-coordinates,with=F], all.y=T)[, colnames(insert), with=F]
 
 if (grepl('.bam', argv$insert)){
+    #remove the flag from the name
+    out[,name:=gsub(paste0('_', flag), '', name), by=c('name', 'flag')]
     sam_dt = rbind(new_header, out[order(seqnames, as.numeric(start))], fill=T)
     sam = do.call(paste, c(sam_dt, sep='\t'))
     sam_trim = str_trim(gsub('NA','',sam))

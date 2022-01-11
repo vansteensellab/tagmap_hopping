@@ -1,0 +1,46 @@
+
+```{r}
+library(data.table)
+
+base_dir = '/DATA/usr/m.eder/projects/Tn5_tagmentation/E1665_SB_mapping'
+old_dir = 'Christ_pipeline_20210903/Results/mm10/home/insertions'
+new_dir = 'Christ_pipeline_20211102/Results/mm10/hopping/insertions_ref'
+flist = list.files(paste(base_dir, old_dir, sep='/'))
+
+
+for (file in flist[grep('P6_', flist)]){
+    old_dt = fread(paste(base_dir, old_dir, file, sep='/'))
+    new_dt = fread(paste(base_dir, new_dir, file, sep='/'))
+    new_dt = new_dt[start_gap!='.', ]
+    gr_old = GRanges(old_dt$seqnames,
+                     IRanges(start=old_dt[,as.numeric(start_gap)], width=2),
+                     strand=old_dt$strand)
+    gr_new = GRanges(new_dt[start_gap!='.', seqnames],
+                     IRanges(start=new_dt[start_gap!='.',as.numeric(start_gap)], width=2),
+                     strand=new_dt[start_gap!='.', strand])
+
+    d_old = distanceToNearest(gr_old, gr_new,ignore.strand=T)
+    d_new = distanceToNearest(gr_new, gr_old,ignore.strand=T)
+
+    dist_old = as.data.table(d_old[which(mcols(d_old)$distance!=0),])
+    dist_bind_old = cbind(dist_old,
+                          dist_old[, old_dt[queryHits,
+                                            c('seqnames', 'start_gap', 'end_gap', 'strand')]],
+                          dist_old[, new_dt[subjectHits,
+                                            c('seqnames', 'start_gap', 'end_gap', 'strand')]])
+
+    dist_new = as.data.table(d_new[which(mcols(d_new)$distance!=0),])
+    dist_bind_new = cbind(dist_new,
+                          dist_new[, old_dt[subjectHits,
+                                            c('seqnames', 'start_gap', 'end_gap', 'strand')]],
+                          dist_new[, new_dt[queryHits,
+                                            c('seqnames', 'start_gap', 'end_gap', 'strand')]])
+
+    print(file)
+    print(dist_bind_old)
+    print(dist_bind_new)
+    print(table(dist_bind_old[,7]))
+    print(table(dist_bind_new[,11]))
+}
+
+```
