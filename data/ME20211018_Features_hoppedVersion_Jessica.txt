@@ -1,0 +1,38 @@
+chr15_Left-HA                 	1..1010   
+g>A                           	51..51    
+a>G                           	332..332  
+gRNA(i)                       	994..1010 
+from BspEI                    	1011..1015
+tata                          	1016..1019
+tata(1)                       	1016..1019
+5'-ITR                        	1020..1152
+5LTRfix                       	1153..1291
+whole Puro casette from pEN114	1297..3027
+FRT                           	1380..1413
+PGK PROMOTER (from pEN114)    	1475..1986
+EM7 PROMOTER (from pEN114)    	1998..2053
+Puro Variant (from pEN114)    	2054..2653
+bGH PA (from pEN114)          	2688..2915
+FRT                           	2970..3003
+5'-ITR(1)                     	3056..3060
+mut to CT                     	3056..3057
+SOX2_Promoter                 	3067..5400
+Kozaq                         	5408..5413
+GFP                           	5414..6038
+gRNA1_5'                      	5915..5934
+gRNA2_5'                      	5966..5985
+TTAA site                     	6035..6038
+GFP(1)                        	6039..6133
+gRNA_1_3PRIME                 	6049..6068
+gRNA_2_3PRIME                 	6076..6095
+GFP STOP codon                	6131..6133
+Pme1                          	6137..6144
+Mre                           	6161..6168
+SV40                          	6169..6390
+STOP codon                    	6280..6282
+3'-proxITR                    	6399..6440
+3'-ITR                        	6441..6665
+tata(2)                       	6666..6669
+from BclI                     	6670..6670
+chr15_Right-HA                	6671..7680
+c>T                           	7086..7086

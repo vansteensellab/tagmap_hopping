@@ -1,7 +1,0 @@
-Sample_name	structure	mate	file	construct_type	Celltype	genome
-Hap1_G2E9_WT_Rv_home	Rev_SB_home	R1	m.eder/5823/fastq_files/5823_15_Hap1_G2E9_WT_Rv_SB_CGTACTAG-AAGGAGTA_S16_R1_001.fastq.gz	CRISPR	Hap1	hg38
-Hap1_G2E9_WT_Rv_home	Rev_SB_home	R2	m.eder/5823/fastq_files/5823_15_Hap1_G2E9_WT_Rv_SB_CGTACTAG-AAGGAGTA_S16_R2_001.fastq.gz	CRISPR	Hap1	hg38
-D8h_Fw	For_SB	R1	l.dauban/5947/fastq_files/5947_35_D8h_SB_fwd_CTCTCTAC-AGAGGATA_S10_R1_001.fastq.gz	SB	Hap1	hg38
-D8h_Fw	For_SB	R2	l.dauban/5947/fastq_files/5947_35_D8h_SB_fwd_CTCTCTAC-AGAGGATA_S10_R2_001.fastq.gz	SB	Hap1	hg38
-D8h_Rv	Rev_SB	R1	l.dauban/5947/fastq_files/5947_50_D8h_SB_rev_CTCTCTAC-TCTACTCT_S53_R1_001.fastq.gz	SB	Hap1	hg38
-D8h_Rv	Rev_SB	R2	l.dauban/5947/fastq_files/5947_50_D8h_SB_rev_CTCTCTAC-TCTACTCT_S53_R2_001.fastq.gz	SB	Hap1	hg38
